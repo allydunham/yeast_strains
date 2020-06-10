@@ -12,7 +12,7 @@
 
 ## Config ##
 project_name="Yeast Strains"
-local_dir=$HOME/phd/test
+local_dir=$HOME/phd/yeast_strains
 remote_dirs=( ebi:/hps/research1/beltrao/ally/yeast_strains )
 folders=( "data" "meta" "figures" )
 

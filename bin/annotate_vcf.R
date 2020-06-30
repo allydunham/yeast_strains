@@ -15,4 +15,5 @@ txdb <- TxDb.Scerevisiae.UCSC.sacCer3.sgdGene
 #seqlevels(txdb) <- paste0('chromosome',c(1:16,'M'))
 
 coding <- data.frame(predictCoding(vcf, txdb, seqSource=sc))
+coding$ALT <- sapply(coding$ALT, function(x){paste(as.character(x), collapse = ',')})
 write.table(coding, args[2], sep='\t', row.names=F, quote=F)

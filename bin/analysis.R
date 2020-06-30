@@ -3,10 +3,13 @@
 
 source('src/config.R')
 
-proteomic <- read_tsv('data/raw/1k_quant_wide.tsv') %>%
-  rename(gene = X1) %>%
-  pivot_longer(-gene, names_to = 'strain', values_to = 'abundance')
+proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
+  select(-X1) %>%
+  rename(gene=symbol, uniprot=systematic_name) %>%
+  pivot_longer(!one_of(c('gene', 'uniprot')), names_to = 'strain', values_to = 'abundance')
 
 transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
   rename(uniprot = systematic_name) %>%
-  pivot_longer(-gene, names_to = 'strain', values_to = 'abundance')
+  pivot_longer(-uniprot, names_to = 'strain', values_to = 'abundance')
+
+

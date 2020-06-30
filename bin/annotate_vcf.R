@@ -5,7 +5,8 @@ library(TxDb.Scerevisiae.UCSC.sacCer3.sgdGene)
 
 args = commandArgs(trailingOnly=TRUE)
 
-vcf <- readVcf(args[1], "sacCer3")
+vcf <- readVcf(args[1], "sacCer3", param=ScanVcfParam(samples=NA))
+message('VCF Read')
 seqlevels(vcf) <- sapply(seqlevels(vcf), function(x){paste0('chr',as.roman(gsub('(C|c)hromosome|(C|c)hr','',x)))})
   
 sc <- BSgenome.Scerevisiae.UCSC.sacCer3

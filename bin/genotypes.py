@@ -40,11 +40,11 @@ def main(args):
 
     # Iterate over loci
     for site in vcf_file:
-        freqs = site.INFO.AF.split(',')
+        freqs = site.INFO['AF']
         for i in range(len(site.ALT)):
             if not args.filter or float(freqs[i]) < args.filter:
                 gens = [call.data.GT.count(str(i + 1)) for call in site.samples]
-                print(CHR_MAP[site.CHROM], site.POS, site.REF, site.ALT, *gens, sep='\t')
+                print(CHR_MAP[site.CHROM], site.POS, site.REF, site.ALT[i], *gens, sep='\t')
 
 def parse_args():
     """Process input arguments"""

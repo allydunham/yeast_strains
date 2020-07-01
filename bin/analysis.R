@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 # Initial analysis script
-
 source('src/config.R')
 
 proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%

@@ -14,7 +14,7 @@
 project_name="Yeast Strains"
 local_dir=$HOME/phd/yeast_strains
 remote_dirs=( ebi:/hps/research1/beltrao/ally/yeast_strains )
-folders=( "data" "meta" "figures" )
+folders=( "data" "meta" )
 
 ## Colours for printf ##
 green=$(tput setaf 2)

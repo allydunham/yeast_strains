@@ -6,7 +6,7 @@ source('src/config.R')
 args = commandArgs(trailingOnly=TRUE)
 
 # Import data
-annotation <- read_tsv(args[1], col_types = cols(PROTEINLOC=col_character())) %>%
+annotation <- read_tsv(args[1], col_types = cols(PROTEINLOC=col_character(), CDSID=col_character())) %>%
   rename_all(str_to_lower) %>%
   mutate(uniprot = unname(NAME_TO_UNIPROT[geneid]))
 

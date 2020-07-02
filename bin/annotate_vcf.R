@@ -17,4 +17,4 @@ txdb <- TxDb.Scerevisiae.UCSC.sacCer3.sgdGene
 coding <- data.frame(predictCoding(vcf, txdb, seqSource=sc))
 coding$ALT <- sapply(coding$ALT, function(x){paste(as.character(x), collapse = ',')})
 coding$PROTEINLOC <- sapply(coding$PROTEINLOC, function(x){paste(x, collapse = ',')})
-write.table(coding, args[2], sep='\t', row.names=F, quote=F)
+write.table(coding, stdout(), sep='\t', row.names=F, quote=F)

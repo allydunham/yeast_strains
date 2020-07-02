@@ -23,7 +23,7 @@ annotation <- left_join(annotation, select(sift, uniprot=acc, proteinloc=pos, re
 
 # Add consequences to genotypes and filter to those with consequences
 genotypes <- read_tsv(args[2]) %>%
-  pivot_longer(!one_of(c('chromosome', 'position', 'ref', 'alt')), names_to = 'strain', values_to = 'genotype') %>%
+  pivot_longer(!chromosome:alt, names_to = 'strain', values_to = 'genotype') %>%
   filter(!genotype == 0) %>%
   left_join(select(annotation, chromosome = seqnames, position = start, ref, alt, uniprot, geneid, proteinloc, refaa, altaa=varaa, consequence, score),
             by = c('chromosome', 'position', 'ref', 'alt')) %>%

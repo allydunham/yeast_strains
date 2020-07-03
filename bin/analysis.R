@@ -67,3 +67,22 @@ per_gene_proteomic <- group_by(comb, systematic) %>%
   ungroup() %>%
   drop_na() %>%
   mutate(p.adj = p.adjust(p.value))
+
+gene_prot_trans <- full_join(select(per_gene_cross, systematic, p_prot_trans=p.adj),
+                             select(per_gene_transcriptomic, systematic, p_trans_paff=p.adj),
+                             by = c('systematic')) %>%
+  full_join(select(per_gene_proteomic, systematic, p_prot_paff=p.adj),
+            by = c('systematic'))
+
+plots$gene_cors <- ggplot() +
+  geom_point(data = filter(gene_prot_trans, p_trans_paff < 0.05, p_prot_paff < 0.05),
+            mapping = aes(x = p_trans_paff, y = p_prot_paff, label = systematic), colour = 'red') + 
+  geom_point(data = filter(gene_prot_trans, p_trans_paff < 0.05, p_prot_paff > 0.05),
+             mapping = aes(x = p_trans_paff, y = p_prot_paff), colour = 'green', shape = 20) + 
+  geom_point(data = filter(gene_prot_trans, p_trans_paff > 0.05, p_prot_paff < 0.05),
+             mapping = aes(x = p_trans_paff, y = p_prot_paff), colour = 'green', shape = 20) + 
+  geom_point(data = filter(gene_prot_trans, p_trans_paff > 0.05, p_prot_paff > 0.05),
+             mapping = aes(x = p_trans_paff, y = p_prot_paff), colour = 'black', shape = 20) + 
+  coord_cartesian(clip = 'off')
+
+save_plotlist(plots, 'figures/')

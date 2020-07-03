@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 # Setup namespace for Yeast Strains project
-
 library(tidyverse)
+library(broom)
+library(plotlistr)
 
 # Import Uniprot to Gene map
 NAME_TO_UNIPROT <- read_tsv('meta/uniprot_map', col_names = c('uniprot', 'database', 'id')) %>%

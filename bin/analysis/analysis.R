@@ -7,6 +7,9 @@ paff <- read_tsv('data/paff_scores.tsv') %>%
   rename(systematic=geneid)
 # TODO Strains CEN.PK and Reference? called XTRA_DXL and FY4-6 in their data
 
+early_stops <- read_tsv('data/early_stops.tsv') %>%
+  filter(systematic %in% paff$systematic)
+
 proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
   select(-X1) %>%
   rename(gene=symbol, systematic=systematic_name) %>%

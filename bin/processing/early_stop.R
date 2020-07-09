@@ -24,6 +24,8 @@ comb <- left_join(select(annotation, systematic=geneid, uniprot, chromosome = se
   left_join(gene_lengths, by = "uniprot") %>%
   mutate(protein_pos = as.numeric(str_remove(proteinloc, ',.*')),
          prop = protein_pos / length) %>%
-  select(strain, systematic, uniprot, consequence, everything())
+  select(strain, systematic, uniprot, consequence, everything()) %>%
+  drop_na(strain) %>%
+  arrange(strain, chromosome, position)
 
 write(format_tsv(comb), file = stdout())

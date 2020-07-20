@@ -15,7 +15,8 @@ proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
   rename(gene=symbol, systematic=systematic_name) %>%
   pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
   group_by(gene, systematic) %>%
-  mutate(fc = log2(abundance / median(abundance))) %>%
+  mutate(fc = abundance / median(abundance),
+         fc = log2(fc + min(fc[fc > 0]))) %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
 
@@ -23,7 +24,8 @@ transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
   rename(systematic = systematic_name) %>%
   pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
   group_by(systematic) %>%
-  mutate(fc = log2(abundance / median(abundance))) %>%
+  mutate(fc = abundance / median(abundance),
+         fc = log2(fc + min(fc[fc > 0]))) %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
 
@@ -137,7 +139,7 @@ plots$gene_cors_bars <- mutate(gene_prot_trans, type = classify_p(p_trans_paff, 
 ###  Regress out RNA vs Proteome ###
 tidy_lm <- function(x, type){
   s <- summary(x)
-  tidy(s) %>%
+  tidy(x) %>%
     mutate(term = str_to_lower(term) %>% str_remove_all('[()]')) %>%
     rename_all(~str_replace_all(., '\\.', '_')) %>%
     pivot_wider(names_from = term, values_from = c(estimate, std_error, statistic, p_value), names_glue = "{term}_{.value}") %>%
@@ -200,7 +202,7 @@ plots$early_stop_prot_fc <- (ggplot(drop_na(stops, prop), aes(x = prop, group = 
 
 plots$early_stop_prot_overall <- ggplot(stops, aes(x = consequence, y = proteomic)) +
   geom_boxplot() +
-  labs(x = '', y = 'Proteomic FC')
+  labs(x = '', y = 'Proteomic FC') +
   stat_compare_means(comparisons = list(c('Frameshift', 'Missense'), c('Missense', 'Nonsense'), c('Frameshift', 'Nonsense')))
   
 ### Save Plots ###

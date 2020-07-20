@@ -15,7 +15,7 @@ proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
   rename(gene=symbol, systematic=systematic_name) %>%
   pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
   group_by(gene, systematic) %>%
-  mutate(fc = abundance / median(abundance)) %>%
+  mutate(fc = log2(abundance / median(abundance))) %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
 
@@ -23,7 +23,7 @@ transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
   rename(systematic = systematic_name) %>%
   pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
   group_by(systematic) %>%
-  mutate(fc = abundance / median(abundance)) %>%
+  mutate(fc = log2(abundance / median(abundance))) %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
 
@@ -66,16 +66,12 @@ plots$paff_extreme_distributions <- (filter(paff, systematic %in% (filter(paff_d
 
 ### Basic Correlations ###
 plots$proteome_vs_transcriptome <- ggplot(comb, aes(x = transcriptomic, y = proteomic)) + 
-  scale_x_log10() +
-  scale_y_log10() +
   geom_hex()
 
 plots$proteome_vs_paff <- ggplot(comb, aes(x = paff, y = proteomic, group = cut_width(paff, 0.05))) + 
-  scale_y_log10() +
   geom_violin()
 
 plots$transcriptome_vs_paff <- ggplot(comb, aes(x = paff, y = transcriptomic, group = cut_width(paff, 0.05))) + 
-  scale_y_log10() +
   geom_violin()
 
 ### Per gene Correlations ###
@@ -183,6 +179,29 @@ plots$paff_proteome_lm <- select(proteome_paff_lm, systematic, type, adj_r_squar
   theme(legend.title = element_markdown())
 
 ### Early Stop Analysis ###
+stops <- group_by(early_stops, strain, systematic) %>%
+  filter(protein_pos <= min(protein_pos)) %>%
+  ungroup() %>%
+  select(strain, systematic, consequence, prop) %>%
+  left_join(comb, ., by = c('systematic', 'strain')) %>%
+  mutate(consequence = ifelse(is.na(consequence), 'Missense', str_to_title(consequence)))
 
+plots$early_stop_trans_fc <- (ggplot(drop_na(stops, prop), aes(x = prop, group = cut_width(prop, 0.1), y = transcriptomic)) +
+  facet_wrap(~consequence, nrow = 2, labeller = as_labeller(str_to_title)) +
+  geom_boxplot() +
+  labs(x = 'Proportion through protein', y = 'Proteomic FC')) %>% 
+  labeled_plot(unit = 'cm', height = 20, width = 20)
+
+plots$early_stop_prot_fc <- (ggplot(drop_na(stops, prop), aes(x = prop, group = cut_width(prop, 0.1), y = proteomic)) +
+  facet_wrap(~consequence, nrow = 2, labeller = as_labeller(str_to_title)) +
+  geom_boxplot() +
+  labs(x = 'Proportion through protein', y = 'Proteomic FC')) %>% 
+  labeled_plot(unit = 'cm', height = 20, width = 20)
+
+plots$early_stop_prot_overall <- ggplot(stops, aes(x = consequence, y = proteomic)) +
+  geom_boxplot() +
+  labs(x = '', y = 'Proteomic FC')
+  stat_compare_means(comparisons = list(c('Frameshift', 'Missense'), c('Missense', 'Nonsense'), c('Frameshift', 'Nonsense')))
+  
 ### Save Plots ###
 save_plotlist(plots, 'figures/')

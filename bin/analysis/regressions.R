@@ -3,42 +3,8 @@
 source('src/config.R')
 
 ### Import Data ###
-paff <- read_tsv('data/paff_scores.tsv') %>%
-  rename(systematic=geneid)
-# TODO Strains CEN.PK and Reference? called XTRA_DXL and FY4-6 in their data
-
-early_stops <- read_tsv('data/early_stops.tsv') %>%
-  filter(systematic %in% paff$systematic)
-
-proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
-  select(-X1) %>%
-  rename(gene=symbol, systematic=systematic_name) %>%
-  pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
-  group_by(gene, systematic) %>%
-  mutate(fc = abundance / median(abundance),
-         fc = log2(fc + min(fc[fc > 0]))) %>%
-  ungroup() %>%
-  filter(systematic %in% paff$systematic)
-
-transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
-  rename(systematic = systematic_name) %>%
-  pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
-  group_by(systematic) %>%
-  mutate(fc = abundance / median(abundance),
-         fc = log2(fc + min(fc[fc > 0]))) %>%
-  ungroup() %>%
-  filter(systematic %in% paff$systematic)
-
-comb <- full_join(select(proteomic, -gene) %>% rename(proteomic_raw=abundance, proteomic=fc),
-                  rename(transcriptomic, transcriptomic_raw=abundance, transcriptomic=fc),
-                  by = c('systematic', 'strain')) %>%
-  left_join(paff, by = c('systematic', 'strain'))
-
-annotation <- map(1:16, ~read_tsv(str_c('data/variants/chr', ., '.tsv'), col_types = cols(PROTEINLOC=col_character(), CDSID=col_character()))) %>%
-  bind_rows() %>%
-  rename_all(str_to_lower) %>%
-  mutate(uniprot = unname(NAME_TO_UNIPROT[geneid])) %>%
-  rename(systematic = geneid)
+omics <- read_rds('data/rdata/omics.rds') %>%
+  filter(!low_paff_range)
 
 ### Analyse ###
 plots <- list()
@@ -71,7 +37,7 @@ calc_gene_lms <- function(tbl, ...){
                    tidy_lm(both_lm, type = 'Transcriptome + P(aff)')))
 }
 
-proteome_paff_lm <- group_by(comb, systematic) %>%
+proteome_paff_lm <- group_by(omics, systematic) %>%
   group_modify(calc_gene_lms) %>%
   filter(!is.na(type))
 
@@ -86,5 +52,13 @@ plots$paff_proteome_lm <- select(proteome_paff_lm, systematic, type, adj_r_squar
   labs(subtitle = 'Adj. R-Squared for LMs using different factors to predict Proteome FC') +
   theme(legend.title = element_markdown())
 
+plots$correlation_distributions <- select(proteome_paff_lm, systematic, type, adj_r_squared) %>%
+  ggplot(aes(x = adj_r_squared, y = ..scaled.., colour = type)) +
+  stat_density(geom = 'line', position = 'identity') +
+  geom_vline(xintercept = 0, colour = 'grey', linetype = 'dotted') +
+  scale_colour_manual(values = c(`Transcriptome + P(aff)`='firebrick2', Transcriptome='cornflowerblue')) +
+  labs(x = 'Adj. R Squared', y = 'Scaled Density') +
+  guides(colour = guide_legend(title = ''))
+
 ### Save Plots ###
-save_plotlist(plots, 'figures/')
+save_plotlist(plots, 'figures/regressions/')

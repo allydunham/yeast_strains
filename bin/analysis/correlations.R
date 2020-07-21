@@ -3,49 +3,18 @@
 source('src/config.R')
 
 ### Import Data ###
-paff <- read_tsv('data/paff_scores.tsv') %>%
-  rename(systematic=geneid)
-# TODO Strains CEN.PK and Reference? called XTRA_DXL and FY4-6 in their data
-
-proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
-  select(-X1) %>%
-  rename(gene=symbol, systematic=systematic_name) %>%
-  pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
-  group_by(gene, systematic) %>%
-  mutate(fc = abundance / median(abundance),
-         fc = log2(fc + min(fc[fc > 0]))) %>%
-  ungroup() %>%
-  filter(systematic %in% paff$systematic)
-
-transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
-  rename(systematic = systematic_name) %>%
-  pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
-  group_by(systematic) %>%
-  mutate(fc = abundance / median(abundance),
-         fc = log2(fc + min(fc[fc > 0]))) %>%
-  ungroup() %>%
-  filter(systematic %in% paff$systematic)
-
-comb <- full_join(select(proteomic, -gene) %>% rename(proteomic_raw=abundance, proteomic=fc),
-                  rename(transcriptomic, transcriptomic_raw=abundance, transcriptomic=fc),
-                  by = c('systematic', 'strain')) %>%
-  left_join(paff, by = c('systematic', 'strain'))
-
-annotation <- map(1:16, ~read_tsv(str_c('data/variants/chr', ., '.tsv'), col_types = cols(PROTEINLOC=col_character(), CDSID=col_character()))) %>%
-  bind_rows() %>%
-  rename_all(str_to_lower) %>%
-  mutate(uniprot = unname(NAME_TO_UNIPROT[geneid])) %>%
-  rename(systematic = geneid)
+omics <- read_rds('data/rdata/omics.rds') %>%
+  filter(!low_paff_range)
 
 ### Analyse ###
 plots <- list()
-plots$proteome_vs_transcriptome <- ggplot(comb, aes(x = transcriptomic, y = proteomic)) + 
+plots$proteome_vs_transcriptome <- ggplot(omics, aes(x = transcriptomic, y = proteomic)) + 
   geom_hex()
 
-plots$proteome_vs_paff <- ggplot(comb, aes(x = paff, y = proteomic, group = cut_width(paff, 0.05))) + 
+plots$proteome_vs_paff <- ggplot(omics, aes(x = paff, y = proteomic, group = cut_width(paff, 0.05))) + 
   geom_violin()
 
-plots$transcriptome_vs_paff <- ggplot(comb, aes(x = paff, y = transcriptomic, group = cut_width(paff, 0.05))) + 
+plots$transcriptome_vs_paff <- ggplot(omics, aes(x = paff, y = transcriptomic, group = cut_width(paff, 0.05))) + 
   geom_violin()
 
 ### Per gene Correlations ###
@@ -60,19 +29,19 @@ group_cor_test <- function(tbl, var1, var2){
   return(tidy(cor.test(pull(tbl, !!var1), pull(tbl, !!var2))))
 }
 
-per_gene_cross <- group_by(comb, systematic) %>%
+per_gene_cross <- group_by(omics, systematic) %>%
   group_modify(~group_cor_test(.x, proteomic, transcriptomic)) %>%
   ungroup() %>%
   drop_na() %>%
   mutate(p.adj = p.adjust(p.value))
 
-per_gene_transcriptomic <- group_by(comb, systematic) %>%
+per_gene_transcriptomic <- group_by(omics, systematic) %>%
   group_modify(~group_cor_test(.x, transcriptomic, paff)) %>%
   ungroup() %>%
   drop_na() %>%
   mutate(p.adj = p.adjust(p.value))
 
-per_gene_proteomic <- group_by(comb, systematic) %>%
+per_gene_proteomic <- group_by(omics, systematic) %>%
   group_modify(~group_cor_test(.x, proteomic, paff)) %>%
   ungroup() %>%
   drop_na() %>%
@@ -109,4 +78,4 @@ plots$gene_cors_bars <- mutate(gene_prot_trans, type = classify_p(p_trans_paff, 
   scale_y_log10()
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/')
+save_plotlist(plots, 'figures/correlation/')

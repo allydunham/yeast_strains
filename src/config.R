@@ -5,6 +5,7 @@ library(ggpubr)
 library(ggtext)
 library(broom)
 library(plotlistr)
+library(tblhelpr)
 
 # Import Uniprot to Gene map
 NAME_TO_UNIPROT <- read_tsv('meta/uniprot_map', col_names = c('uniprot', 'database', 'id')) %>%

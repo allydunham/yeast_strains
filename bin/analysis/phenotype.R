@@ -87,14 +87,26 @@ phenotype_lms <- group_by(omic_pcas, condition) %>%
 lm_colours <- c(`P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
                 `Transcriptomic/P(Aff)`='red', `Proteomic/P(Aff)`='green', `Proteomic/Transcriptomic`='blue',
                 `All` = 'black')
-plots$lm_summary <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
+plots$factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
+  facet_wrap(~condition, nrow = 6, ncol = 6) +
   geom_col(show.legend = FALSE) +
   coord_flip() + 
   scale_fill_manual(values = lm_colours) +
-  facet_wrap(~condition, nrow = 6, ncol = 6) +
+  labs(x = 'Adj. R Squared', y = '') +
   theme(panel.grid.major.x = element_line(colour = 'grey', linetype = 'dotted'),
         panel.grid.major.y = element_blank())
-plots$lm_summary <- labeled_plot(plots$lm_summary, units = 'cm', height = 25, width = 25)
+plots$factor_r_squared <- labeled_plot(plots$factor_r_squared, units = 'cm', height = 25, width = 25)
 
+nfactor_map <- c(`P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
+                 `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3)
+plots$factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[type])) %>%
+  ggplot(aes(x = type, y = adj_r_squared, fill = nfactors)) +
+  geom_boxplot() +
+  ylim(c(0, NA)) +
+  scale_fill_brewer(type = 'qual', palette = 'Set1') +
+  guides(fill = guide_legend(title = 'Number of Factors')) +
+  labs(x = '', y = 'Adj. R Squared')
+plots$factor_r_squared_summary <- labeled_plot(plots$factor_r_squared_summary, units = 'cm', height = 15, width = 35)
+  
 ### Save Plots ###
 save_plotlist(plots, 'figures/phenotypes/')

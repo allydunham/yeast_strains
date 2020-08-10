@@ -8,20 +8,27 @@ omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 
 plots <- list()
+### Determine phenotypes with good S-score range ###
+plots$phenotype_sscores <- (ggplot(phenotypes, aes(x = sscore)) +
+  facet_wrap(~condition, scales = 'free') +
+  geom_histogram(bins = 30, fill = 'cornflowerblue') +
+  labs(x = 'S-Score', y = 'Count')) %>%
+  labeled_plot(units = 'cm', width = 40, height = 30)
+
 ### Calculate Dim Reduction ###
 proteomic_pca <- select(omics, systematic, strain, proteomic) %>%
   drop_na() %>%
   pivot_wider(names_from = 'systematic', values_from = 'proteomic') %>%
   tibble_to_matrix(-strain, row_names = 'strain')
 proteomic_pca[is.na(proteomic_pca)] <- 0
-proteomic_pca <- prcomp(proteomic_pca, rank. = 100)
+proteomic_pca <- prcomp(proteomic_pca, rank. = 30)
 
 transcriptomic_pca <- select(omics, systematic, strain, transcriptomic) %>%
   drop_na() %>%
   pivot_wider(names_from = 'systematic', values_from = 'transcriptomic') %>%
   tibble_to_matrix(-strain, row_names = 'strain')
 transcriptomic_pca[is.na(transcriptomic_pca)] <- 0
-transcriptomic_pca <- prcomp(transcriptomic_pca, rank. = 100)
+transcriptomic_pca <- prcomp(transcriptomic_pca, rank. = 30)
 
 paff_pca <- select(omics, systematic, strain, paff) %>%
   drop_na() %>%
@@ -31,7 +38,7 @@ paff_pca <- select(omics, systematic, strain, paff) %>%
   ungroup() %>%
   pivot_wider(names_from = 'systematic', values_from = 'paff') %>%
   tibble_to_matrix(-strain, row_names = 'strain')
-paff_pca <- prcomp(paff_pca, rank. = 100)
+paff_pca <- prcomp(paff_pca, rank. = 30)
 
 omic_pcas <- as_tibble(proteomic_pca$x, rownames = 'strain') %>% 
   rename_with(~str_c('proteomic_', .), -strain) %>%

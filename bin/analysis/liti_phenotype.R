@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
-# Analyse Phenotypes
+# Analyse Liti Phenotype Data
 source('src/config.R')
 
 ### Import Data ###
-phenotypes <- read_rds('data/rdata/phenotypes.rds')
+phenotypes <- read_rds('data/rdata/liti_phenotypes.rds')
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 
 plots <- list()
-### Determine phenotypes with good S-score range ###
-plots$phenotype_sscores <- (ggplot(phenotypes, aes(x = sscore)) +
+### Score distributions ###
+plots$phenotype_scores <- (ggplot(phenotypes, aes(x = score)) +
   facet_wrap(~condition, scales = 'free') +
   geom_histogram(bins = 30, fill = 'cornflowerblue') +
   labs(x = 'S-Score', y = 'Count')) %>%
@@ -60,15 +60,15 @@ calc_lms <- function(tbl, ...){
     return(tibble(type=NA, adj_r_squared=NA, f_Statistic=NA, p_value=NA))
   }
   
-  prot_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('proteomic')))
-  trans_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('transcriptomic')))
-  paff_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('paff')))
+  prot_lm <- lm(score ~ ., data = select(tbl, score, starts_with('proteomic')))
+  trans_lm <- lm(score ~ ., data = select(tbl, score, starts_with('transcriptomic')))
+  paff_lm <- lm(score ~ ., data = select(tbl, score, starts_with('paff')))
   
-  prot_trans_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('proteomic'), starts_with('transcriptomic')))
-  prot_paff_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('proteomic'), starts_with('paff')))
-  trans_paff_lm <- lm(sscore ~ ., data = select(tbl, sscore, starts_with('transcriptomic'), starts_with('paff')))
+  prot_trans_lm <- lm(score ~ ., data = select(tbl, score, starts_with('proteomic'), starts_with('transcriptomic')))
+  prot_paff_lm <- lm(score ~ ., data = select(tbl, score, starts_with('proteomic'), starts_with('paff')))
+  trans_paff_lm <- lm(score ~ ., data = select(tbl, score, starts_with('transcriptomic'), starts_with('paff')))
   
-  comb_lm <- lm(sscore ~ ., data = select(tbl, -strain))
+  comb_lm <- lm(score ~ ., data = select(tbl, -strain))
   
   return(
     bind_rows(
@@ -116,4 +116,4 @@ plots$factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(
 plots$factor_r_squared_summary <- labeled_plot(plots$factor_r_squared_summary, units = 'cm', height = 15, width = 35)
   
 ### Save Plots ###
-save_plotlist(plots, 'figures/phenotypes/')
+save_plotlist(plots, 'figures/liti_phenotypes/')

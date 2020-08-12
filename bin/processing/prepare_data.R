@@ -2,6 +2,9 @@
 # Process data for analyses
 source('src/config.R')
 
+# Strain information
+strains <- read_tsv('meta/strain_information.tsv')
+
 # Paff Scores
 paff <- read_tsv('data/paff_scores.tsv') %>%
   rename(systematic=geneid)
@@ -59,7 +62,12 @@ annotation <- map(1:16, ~read_tsv(str_c('data/variants/chr', ., '.tsv'), col_typ
 write_rds(annotation, 'data/rdata/annotation.rds')
 
 # Phenotypes
-phenotypes <- read_tsv('data/raw/phenoMatrix_35ConditionsNormalizedByYPD.tab') %>%
+liti_phenotypes <- read_tsv('data/raw/phenoMatrix_35ConditionsNormalizedByYPD.tab') %>%
   rename(strain = X1) %>%
-  pivot_longer(-strain, names_to = 'condition', values_to = 'sscore')
-write_rds(phenotypes, 'data/rdata/phenotypes.rds')
+  pivot_longer(-strain, names_to = 'condition', values_to = 'score')
+write_rds(liti_phenotypes, 'data/rdata/liti_phenotypes.rds')
+
+bede_phenotypes <- read_tsv('data/raw/yeasts_natural.tsv', col_types = cols(strain=col_character())) %>%
+  filter(!info == 'undefined') %>%
+  select(strain=info, os_strain=strain, everything())
+write_rds(bede_phenotypes, 'data/rdata/bede_phenotypes.rds')

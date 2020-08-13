@@ -7,6 +7,9 @@ library(caret)
 phenotypes <- read_rds('data/rdata/bede_phenotypes.rds')
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
+omic_pcas <- read_rds('data/rdata/omic_pcas.rds') %>%
+  select(strain, condition, score, qvalue, num_range('proteomic_PC', range = 1:50),
+         num_range('transcriptomic_PC', range = 1:50), num_range('paff_PC', range = 1:50))
 
 plots <- list()
 ### S-Score distributions and selection of conditions with good ranges ###
@@ -31,38 +34,6 @@ good_cons <- group_by(phenotypes, condition) %>%
   filter(n_del > 25)
 
 phenotypes <- filter(phenotypes, condition %in% good_cons$condition)
-
-### Calculate Dim Reduction ###
-proteomic_pca <- select(omics, systematic, strain, proteomic) %>%
-  drop_na() %>%
-  pivot_wider(names_from = 'systematic', values_from = 'proteomic') %>%
-  tibble_to_matrix(-strain, row_names = 'strain')
-proteomic_pca[is.na(proteomic_pca)] <- 0
-proteomic_pca <- prcomp(proteomic_pca, rank. = 50)
-
-transcriptomic_pca <- select(omics, systematic, strain, transcriptomic) %>%
-  drop_na() %>%
-  pivot_wider(names_from = 'systematic', values_from = 'transcriptomic') %>%
-  tibble_to_matrix(-strain, row_names = 'strain')
-transcriptomic_pca[is.na(transcriptomic_pca)] <- 0
-transcriptomic_pca <- prcomp(transcriptomic_pca, rank. = 50)
-
-paff_pca <- select(omics, systematic, strain, paff) %>%
-  drop_na() %>%
-  complete(systematic, strain) %>%
-  group_by(systematic) %>%
-  mutate(paff = ifelse(is.na(paff), mean(paff, na.rm = TRUE), paff)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = 'systematic', values_from = 'paff') %>%
-  tibble_to_matrix(-strain, row_names = 'strain')
-paff_pca <- prcomp(paff_pca, rank. = 50)
-
-omic_pcas <- as_tibble(proteomic_pca$x, rownames = 'strain') %>% 
-  rename_with(~str_c('proteomic_', .), -strain) %>%
-  full_join(phenotypes, ., by = 'strain') %>%
-  full_join(as_tibble(transcriptomic_pca$x, rownames = 'strain') %>% rename_with(~str_c('transcriptomic_', .), -strain), by = 'strain') %>%
-  full_join(as_tibble(paff_pca$x, rownames = 'strain') %>% rename_with(~str_c('paff_', .), -strain), by = 'strain') %>%
-  select(strain, condition, score, qvalue, starts_with('proteomic_'), starts_with('transcriptomic_'), starts_with('paff_'))
 
 ### Generate Linear Models ###
 tidy_lm <- function(x, type){

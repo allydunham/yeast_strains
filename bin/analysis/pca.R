@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Determine PCAs for each data type
 library(topGO)
-library()
+library(org.Sc.sgd.db)
 source('src/config.R')
 
 ### Import Data ###

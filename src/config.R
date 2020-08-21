@@ -3,6 +3,7 @@
 library(tidyverse)
 library(ggpubr)
 library(ggtext)
+library(ggrepel)
 library(broom)
 library(plotlistr)
 library(tblhelpr)

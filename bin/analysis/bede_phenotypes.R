@@ -171,5 +171,21 @@ plots$log_kappa_accuracy <- ggplot() +
   labs(x = 'Accuracy', y = "Cohen's Kappa")
 plots$log_kappa_accuracy <- labeled_plot(plots$log_kappa_accuracy, units = 'cm', height = 30, width = 30)
 
+### Cyclohexamide model ###
+cyclo <- filter(omic_pcas, condition == 'Cyclohexamide (72H)') %>%
+  mutate(del = as.factor(ifelse(score < 0 & qvalue < 0.05, 'deleterious', 'neutral'))) %>%
+  select(del, starts_with('proteomic_'), starts_with('transcriptomic_'), starts_with('paff_')) %>%
+  drop_na()
+
+trainInd <- createDataPartition(cyclo$del, times = 1, p = 0.8, list = FALSE)
+cyclo_train <- cyclo[trainInd[,1],]
+cyclo_test <- cyclo[-trainInd[,1],]
+
+tc <- trainControl(method = "repeatedcv", repeats = 3, savePredictions = TRUE, classProbs = TRUE, summaryFunction = twoClassSummary)
+cyclo_paff <- train(del ~ ., data = select(cyclo_train, del, starts_with('paff')), method = "glm", family=binomial(), trControl=tc)
+
+preds <- predict(cyclo_paff, cyclo_test)
+cm <- confusionMatrix(preds, cyclo_test$del)
+
 ### Save Plots ###
 save_plotlist(plots, 'figures/bede_phenotypes/')

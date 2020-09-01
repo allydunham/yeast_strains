@@ -4,13 +4,17 @@ source('src/config.R')
 library(caret)
 
 ### Import Data ###
-phenotypes <- read_rds('data/rdata/bede_phenotypes.rds')
+phenotypes <- read_rds('data/rdata/bede_phenotypes.rds') %>%
+  drop_na()
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 omic_pcas <- read_rds('data/rdata/omic_pcas.rds') %>%
   select(strain, condition, score, qvalue, num_range('proteomic_PC', range = 1:50),
          num_range('transcriptomic_PC', range = 1:50), num_range('paff_PC', range = 1:50))
-vae <- read_tsv('data/vae/profiles.tsv')
+
+vae <- bind_rows(`VAE - All` = read_tsv('data/vae/profiles.tsv'),
+                 `VAE - Omics` = read_tsv('data/vae_omics/profiles.tsv'),
+                 .id = 'model')
 
 # Identify conditions with reasonable number of negative examples
 good_cons <- group_by(phenotypes, condition) %>%
@@ -44,9 +48,12 @@ tidy_lm <- function(x, type){
 
 vae_lms <- select(phenotypes, strain, condition, score) %>%
   left_join(vae, by = 'strain') %>%
+  drop_na(model) %>%
   select(-strain) %>%
-  group_by(condition) %>%
-  group_modify(~tidy_lm(lm(score ~ ., data = .), type = 'VAE'))
+  group_by(condition, model) %>%
+  group_modify(~tidy_lm(lm(score ~ ., data = .), type = 'VAE')) %>%
+  select(-type) %>%
+  rename(type = model)
 
 calc_lms <- function(tbl, ...){
   tbl <- drop_na(tbl)
@@ -117,7 +124,7 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
   drop_na() %>%
   bind_rows(vae_lms) %>%
   mutate(type = factor(type, levels = c('P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
-                                        'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All', 'VAE')))
+                                        'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All', 'VAE - Omics', 'VAE - All')))
 
 # phenotype_logisitics <- group_by(omic_pcas, condition) %>%
 #   group_modify(calc_logistic_models) %>%
@@ -129,7 +136,7 @@ phenotype_logisitics <- read_rds('data/rdata/phenotype_logistics.rds')
 ### Analyse  Models ###
 lm_colours <- c(`P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
                 `Transcriptomic/P(Aff)`='red', `Proteomic/P(Aff)`='green', `Proteomic/Transcriptomic`='blue',
-                `All` = 'black', 'VAE'='orange')
+                `All` = 'black', 'VAE - All'='orange', 'VAE - Omics'='orange')
 plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
   facet_wrap(~condition, nrow = 5, ncol = 10) +
   geom_col(show.legend = FALSE) +
@@ -138,18 +145,19 @@ plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squar
   labs(x = 'Adj. R Squared', y = '') +
   theme(panel.grid.major.x = element_line(colour = 'grey', linetype = 'dotted'),
         panel.grid.major.y = element_blank())
-plots$lm_factor_r_squared <- labeled_plot(plots$lm_factor_r_squared, units = 'cm', height = 25, width = 50)
+plots$lm_factor_r_squared <- labeled_plot(plots$lm_factor_r_squared, units = 'cm', height = 30, width = 50)
 
 nfactor_map <- c(`P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
-                 `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3, VAE=3)
-plots$lm_factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[type])) %>%
+                 `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3,
+                 `VAE - All`=3, `VAE - Omics`=2)
+plots$lm_factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%
   ggplot(aes(x = type, y = adj_r_squared, fill = nfactors)) +
   geom_boxplot() +
   ylim(c(0, NA)) +
   scale_fill_brewer(type = 'qual', palette = 'Set1') +
   guides(fill = guide_legend(title = 'Number of Factors')) +
   labs(x = '', y = 'Adj. R Squared')
-plots$lm_factor_r_squared_summary <- labeled_plot(plots$lm_factor_r_squared_summary, units = 'cm', height = 15, width = 35)
+plots$lm_factor_r_squared_summary <- labeled_plot(plots$lm_factor_r_squared_summary, units = 'cm', height = 15, width = 40)
 
 plots$log_factors_kappa <- ggplot(phenotype_logisitics, aes(x = type, y = kappa, fill = type)) +
   facet_wrap(~condition, ncol = 6) +

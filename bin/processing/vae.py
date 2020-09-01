@@ -31,7 +31,7 @@ def sampling(args):
     epsilon = K.random_normal(shape=(batch, dim))
     return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
-def vae_model(input_size=11084, intermediate_size=2000, latent_size=150):
+def vae_model(input_size=10143, intermediate_size=2000, latent_size=150):
     """
     Setup model
     """
@@ -83,6 +83,11 @@ def main(args):
     """Main"""
     train = pd.read_csv(args.train, sep='\t', index_col=0)
     test = pd.read_csv(args.test, sep='\t', index_col=0)
+    if args.features is not None:
+        col_re = f'^({"|".join(args.features)})_'
+        train = train.filter(regex=col_re, axis='columns')
+        test = test.filter(regex=col_re, axis='columns')
+
     train_mat = train.to_numpy().astype(np.float32)
     test_mat = test.to_numpy().astype(np.float32)
 
@@ -90,7 +95,7 @@ def main(args):
     callbacks.append(keras.callbacks.TensorBoard(log_dir=args.outdir, histogram_freq=50,
                                                  write_graph=True, profile_batch=0))
 
-    vae, encoder, decoder = vae_model()
+    vae, encoder, decoder = vae_model(input_size=train_mat.shape[1])
     vae.compile(optimizer='adam')
     vae.fit(train_mat, epochs=args.epochs, batch_size=100,
             validation_data=(test_mat, None), callbacks=callbacks)
@@ -111,15 +116,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('--train', '-r', default='data/full_omics_train.tsv',
+    parser.add_argument('--train', '-r', default='data/full_omics_train_norm.tsv',
                         help="Training omics data file")
 
-    parser.add_argument('--test', '-e', default='data/full_omics_test.tsv',
+    parser.add_argument('--test', '-e', default='data/full_omics_test_norm.tsv',
                         help="Testing omics data file")
 
     parser.add_argument('--epochs', '-p', default=100, type=int, help="Epochs to train for")
 
     parser.add_argument('--outdir', '-o', default='data/vae', help="Output directory")
+
+    parser.add_argument('--features', '-f', nargs='+',
+                        help="Feature types to use [paff, transcriptomic, proteomic].")
 
     return parser.parse_args()
 

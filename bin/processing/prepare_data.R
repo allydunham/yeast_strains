@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # Process data for analyses
 source('src/config.R')
+library(caret)
 
 # Strain information
 strains <- read_tsv('meta/strain_information.tsv')
@@ -71,3 +72,28 @@ bede_phenotypes <- read_tsv('data/raw/yeasts_natural.tsv', col_types = cols(stra
   filter(!info == 'undefined') %>%
   select(strain=info, os_strain=strain, everything())
 write_rds(bede_phenotypes, 'data/rdata/bede_phenotypes.rds')
+
+## VAE Data
+# Make matrix
+vae <- filter(comb, !low_paff_range) %>%
+  select(systematic, strain, proteomic, transcriptomic, paff) %>%
+  pivot_wider(names_from = systematic, values_from = c(proteomic, transcriptomic, paff)) %>%
+  tibble_to_matrix(-strain, row_names = 'strain')
+
+# Filter columns with many NA values NA
+na_cols <- colSums(is.na(vae))
+na_rows <- rowSums(is.na(vae))
+vae <- vae[na_rows < 8000, na_cols < 500]
+
+# Impute and normalise columns
+for (i in 1:ncol(vae)){
+  vae[is.na(vae[,i]),i] <- median(vae[,i], na.rm = TRUE)
+  if (str_starts(colnames(vae)[i], '(transcriptomic|proteomic)')){
+    vae[,i] <- vae[,i] / max(abs(vae[,i]))
+  }
+}
+
+vae <- as_tibble(vae, rownames = 'strain')
+split <- sample(1:nrow(vae), size = 800, replace = FALSE)
+write_tsv(vae[split,], 'data/full_omics_train_norm.tsv')
+write_tsv(vae[-split,], 'data/full_omics_test_norm.tsv')

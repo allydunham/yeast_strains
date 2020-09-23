@@ -77,5 +77,21 @@ plots$gene_cors_bars <- mutate(gene_prot_trans, type = classify_p(p_trans_paff, 
   geom_bar() + 
   scale_y_log10()
 
+### Direction of Correlation
+cors <- bind_rows(Proteomic = per_gene_proteomic, Transcriptomic = per_gene_transcriptomic, .id = 'omic') %>%
+  mutate(cat = ifelse(p.adj <= 0.05, 'p<sub>adj</sub> &le; 0.05', 'p<sub>adj</sub> &gt; 0.05'))
+
+plots$cor_volcano <- ggplot(cors, aes(x = estimate, y = -log10(p.value), colour = cat)) +
+  facet_wrap(~omic) +
+  geom_point() +
+  labs(x = 'Correlation Coefficient', y = '-log<sub>10</sub> p') +
+  scale_colour_brewer(name = '', type = 'qual', palette = 'Set1', direction = -1) +
+  theme(legend.text = element_markdown(), axis.title.y = element_markdown())
+
+plots$cor_distribuition <- ggplot(cors, aes(x = estimate, colour = omic)) +
+  stat_density(geom = 'line', position = 'identity') +
+  labs(x = 'Correlation Coefficient', y = 'Density') +
+  scale_colour_brewer(name = '', type = 'qual', palette = 'Dark2', direction = -1)
+
 ### Save Plots ###
 save_plotlist(plots, 'figures/correlation/')

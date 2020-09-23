@@ -159,6 +159,16 @@ plots$lm_factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.charact
   labs(x = '', y = 'Adj. R Squared')
 plots$lm_factor_r_squared_summary <- labeled_plot(plots$lm_factor_r_squared_summary, units = 'cm', height = 15, width = 40)
 
+plots$lm_factor_r_squared_summary_good_cons <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%
+  filter(condition %in% good_cons$condition) %>%
+  ggplot(aes(x = type, y = adj_r_squared, fill = nfactors)) +
+  geom_boxplot() +
+  ylim(c(0, NA)) +
+  scale_fill_brewer(type = 'qual', palette = 'Set1') +
+  guides(fill = guide_legend(title = 'Number of Factors')) +
+  labs(x = '', y = 'Adj. R Squared')
+plots$lm_factor_r_squared_summary_good_cons <- labeled_plot(plots$lm_factor_r_squared_summary_good_cons, units = 'cm', height = 15, width = 40)
+
 plots$log_factors_kappa <- ggplot(phenotype_logisitics, aes(x = type, y = kappa, fill = type)) +
   facet_wrap(~condition, ncol = 6) +
   geom_col(show.legend = FALSE) +
@@ -202,6 +212,24 @@ cyclo_paff <- train(del ~ ., data = select(cyclo_train, del, starts_with('paff')
 
 preds <- predict(cyclo_paff, cyclo_test)
 cm <- confusionMatrix(preds, cyclo_test$del)
+
+### Benchmark LMs by comparison to randomised phenotypes ###
+shuffled_lms <- select(omic_pcas, -qvalue) %>%
+  group_by(condition) %>%
+  mutate(score = sample(score)) %>%
+  group_modify(calc_lms) %>%
+  drop_na() %>%
+  mutate(type = factor(type, levels = c('P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
+                                        'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All')))
+
+plots$lm_factor_r_squared_summary_shuffled <- mutate(shuffled_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%
+  ggplot(aes(x = type, y = adj_r_squared, fill = nfactors)) +
+  geom_boxplot() +
+  ylim(c(0, NA)) +
+  scale_fill_brewer(type = 'qual', palette = 'Set1') +
+  guides(fill = guide_legend(title = 'Number of Factors')) +
+  labs(x = '', y = 'Adj. R Squared')
+plots$lm_factor_r_squared_summary_shuffled <- labeled_plot(plots$lm_factor_r_squared_summary_shuffled, units = 'cm', height = 15, width = 40)
 
 ### Save Plots ###
 save_plotlist(plots, 'figures/bede_phenotypes/')

@@ -11,9 +11,12 @@ omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range) %>%
   select(systematic, strain, proteomic, transcriptomic, paff)
 
+kos <- read_tsv('data/raw/ko_scores.txt') %>%
+  select(-position) %>%
+  filter(!gene == 'WT')
+
 ### Calculate LMs ###
 analyse_gene_con <- function(tbl, key){
-  message('...', key)
   if (nrow(tbl) < 3){
     return(tibble(rsquared = NA, adj_rsquared = NA, fstatistic = NA, pvalue = NA, estimate_intercept = NA,
                   estimate_proteomic = NA, estimate_transcriptomic = NA, estimate_paff = NA, std_error_intercept = NA,
@@ -34,7 +37,6 @@ analyse_gene_con <- function(tbl, key){
 }
 
 analyse_gene <- function(tbl, key){
-  message(key)
   left_join(tbl, phenotypes, by = 'strain') %>%
     drop_na() %>%
     group_by(condition) %>%
@@ -42,8 +44,10 @@ analyse_gene <- function(tbl, key){
     return()
 }
 
-genes <- group_by(omics, systematic) %>%
-  group_modify(analyse_gene)
+# genes <- group_by(omics, systematic) %>%
+#   group_modify(analyse_gene)
+# write_rds(genes, 'data/rdata/per_gene_lms.rds')
+genes <- read_rds('data/rdata/per_gene_lms.rds')
 
 genes_processed <- drop_na(genes) %>%
   mutate(padj = p.adjust(pvalue, 'fdr'))
@@ -117,6 +121,47 @@ plots$high_r_trans <- (ggplot(omics_high_r_squared, aes(x = transcriptomic, y = 
                         scale_colour_manual(name = '', values = c(`q < 0.05` = 'red', `q > 0.05` = 'black')) +
                         labs(x = 'Transcriptomic FC', y = 'S-Score')) %>%
   labeled_plot(units = 'cm', width = 120, height = 120)
+
+## Analyse genes ##
+common_genes <- filter(genes_processed, adj_rsquared > 0.1, padj < 0.01) %>% 
+  count(systematic) %>%
+  filter(n > 1)
+# Enrichmed for basic metabolism type processes at r > 0.05
+# No enrichment for r > 0.25
+
+per_con_top_genes <- filter(genes_processed, adj_rsquared > 0.1, padj < 0.01) %>% 
+  group_by(condition) %>%
+  {
+    n <- group_keys(.)$condition
+    group_map(., ~.$systematic) %>%
+    set_names(n)
+  }
+# Enrichments generally are broad biosynthesis/metabolism type stuff
+# Possible interesting cases:
+# * 39ºC (72H) - protein refoldxing
+# * Anerobic growth - sulphate assimilation?
+# 
+
+# Compare to KOs
+ko_cors <- select(kos, strain, condition, systematic = gene, score) %>%
+  distinct(strain, condition, systematic, .keep_all = TRUE) %>%
+  left_join(genes_processed, by = c("condition", "systematic")) %>%
+  drop_na(rsquared) %>%
+  group_by(strain, condition) %>%
+  group_modify(~tidy(cor.test(.$score, .$rsquared))) %>%
+  mutate(padj = p.adjust(p.value, method = 'fdr'),
+         cat = ifelse(padj <= 0.05, 'p<sub>adj</sub> &le; 0.05', 'p<sub>adj</sub> &gt; 0.05'))
+
+plots$ko_score_cors <- (ggplot(ko_cors, aes(x = estimate, y = -log10(padj), colour = cat, label = condition)) +
+  facet_wrap(~strain) +
+  geom_point() +
+  geom_text_repel(data = filter(ko_cors, padj <= 0.05), colour='black') +
+  scale_colour_brewer(type = 'qual', palette = 'Set1', direction = -1, name = '') +
+  labs(x = 'Correlation Coefficient between KO S-Score and R-Squared', y = '-log<sub>10</sub> p<sub>adj</sub>') +
+  theme(legend.text = element_markdown(),
+        axis.title.y = element_markdown())) %>%
+  labeled_plot(units = 'cm', height = 20, width = 20)
+
 
 
 ### Save plots ###

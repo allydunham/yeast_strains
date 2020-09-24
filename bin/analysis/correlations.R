@@ -88,7 +88,7 @@ plots$cor_volcano <- ggplot(cors, aes(x = estimate, y = -log10(p.value), colour 
   scale_colour_brewer(name = '', type = 'qual', palette = 'Set1', direction = -1) +
   theme(legend.text = element_markdown(), axis.title.y = element_markdown())
 
-plots$cor_distribuition <- ggplot(cors, aes(x = estimate, colour = omic)) +
+plots$cor_distribution <- ggplot(cors, aes(x = estimate, colour = omic)) +
   stat_density(geom = 'line', position = 'identity') +
   labs(x = 'Correlation Coefficient', y = 'Density') +
   scale_colour_brewer(name = '', type = 'qual', palette = 'Dark2', direction = -1)

@@ -69,7 +69,7 @@ plots$paff_proteome_lm_r <- select(proteome_paff_lm, systematic, type, r) %>%
   geom_point(shape = 20) +
   guides(colour=guide_legend(title = 'R Difference')) +
   scale_colour_manual(values = c(`> 0.05`='firebrick2', `< 0.05`='cornflowerblue')) +
-  labs(subtitle = 'Adj. R-Squared for LMs using different factors to predict Proteome FC') +
+  labs(subtitle = 'Adj. R for LMs using different factors to predict Proteome FC') +
   theme(legend.title = element_markdown())
 
 plots$correlation_distributions_r <- select(proteome_paff_lm, systematic, type, r) %>%

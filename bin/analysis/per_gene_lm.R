@@ -56,13 +56,14 @@ genes_processed <- drop_na(genes) %>%
 plots <- list()
 
 plots$overview <- (ggplot(genes_processed, aes(x = rsquared, y = padj, colour = padj < 0.001, label = systematic)) +
-  facet_wrap(~condition) +
+  facet_wrap(~condition, labeller = label_wrap_gen(15)) +
   geom_point(shape = 20) +
-  geom_text_repel(data = filter(genes_processed, rsquared > 0.2), colour = 'black', nudge_x = 0.2, nudge_y = 0.5) +
+  geom_text_repel(data = filter(genes_processed, rsquared > 0.2), colour = 'black', nudge_x = 0.2, nudge_y = 0.5, size = 2) +
   scale_colour_manual(name = 'p<sub>adj</sub>', values = c(`TRUE`='red', `FALSE`='black'), labels = c(`TRUE`='< 0.001', `FALSE`='> 0.001')) +
   labs(x = expression(R^2), y = expression(p[adj])) + 
-  theme(legend.title = element_markdown())) %>%
-  labeled_plot(units = 'cm', height = 40, width = 40)
+  theme(text = element_text(size=8),
+        legend.title = element_markdown())) %>%
+  labeled_plot(units = 'cm', height = 29, width = 21)
 
 p_value_cutoff <- 0.01
 factor_summary <- mutate(genes_processed,
@@ -161,8 +162,6 @@ plots$ko_score_cors <- (ggplot(ko_cors, aes(x = estimate, y = -log10(padj), colo
   theme(legend.text = element_markdown(),
         axis.title.y = element_markdown())) %>%
   labeled_plot(units = 'cm', height = 20, width = 20)
-
-
 
 ### Save plots ###
 save_plotlist(plots, 'figures/per_gene_lms')

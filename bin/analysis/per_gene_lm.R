@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 # Assess impact of each gene on each condition
+library(biomaRt)
 source('src/config.R')
 
 ### Import Data ###
@@ -14,6 +15,10 @@ omics <- read_rds('data/rdata/omics.rds') %>%
 kos <- read_tsv('data/raw/ko_scores.txt') %>%
   select(-position) %>%
   filter(!gene == 'WT')
+
+uniprot_map <- read_tsv('meta/uniprot_map', col_names = c('uniprot', 'type', 'value')) %>%
+  filter(type == 'Gene_OrderedLocusName') %>%
+  select(uniprot, systematic=value)
 
 ### Calculate LMs ###
 analyse_gene_con <- function(tbl, key){
@@ -126,9 +131,20 @@ plots$high_r_trans <- (ggplot(omics_high_r_squared, aes(x = transcriptomic, y = 
 ## Analyse genes ##
 common_genes <- filter(genes_processed, adj_rsquared > 0.1, padj < 0.01) %>% 
   count(systematic) %>%
-  filter(n > 1)
-# Enrichmed for basic metabolism type processes at r > 0.05
+  arrange(desc(n))
+# Enrichmed for basic metabolism type processes at r > 0.05:
+# Enrichment for r > 0.1, n > 5
+#  - NADH oxidation
+#  - alpha-amino acid biosynthetic process
+#  - energy derivation by oxidation of organic compounds
+#  - nucleobase-containing small molecule metabolic process
+#  - mitochondrion organization
 # No enrichment for r > 0.25
+
+plots$gene_count_hist <- ggplot(common_genes, aes(x = n)) +
+  geom_histogram(binwidth = 1, fill = 'cornflowerblue') +
+  labs(x = 'Number of significant conditions (Adj. r<sup>2</sup> > 0.1, p<sub>adj</sub> < 0.01)', y = 'Count') +
+  theme(axis.title.x = element_markdown())
 
 per_con_top_genes <- filter(genes_processed, adj_rsquared > 0.1, padj < 0.01) %>% 
   group_by(condition) %>%
@@ -162,6 +178,25 @@ plots$ko_score_cors <- (ggplot(ko_cors, aes(x = estimate, y = -log10(padj), colo
   theme(legend.text = element_markdown(),
         axis.title.y = element_markdown())) %>%
   labeled_plot(units = 'cm', height = 20, width = 20)
+
+# Top genes per condition
+top_genes <- genes_processed %>%
+  filter(padj < 0.01) %>%
+  group_by(condition) %>%
+  slice_max(adj_rsquared, n = 10) %>%
+  left_join(uniprot_map, by = 'systematic') %>%
+  select(uniprot, systematic, everything())
+
+ensembl = useEnsembl(biomart="ensembl", dataset="scerevisiae_gene_ensembl")
+
+descriptions <- getBM(attributes=c('uniprotswissprot','description'), filters = 'uniprotswissprot',
+                      values = unique(top_genes$uniprot), mart=ensembl) %>%
+  as_tibble() %>%
+  rename(uniprot=uniprotswissprot)
+
+top_genes <- select(top_genes, condition, uniprot, systematic, adj_rsquared, padj) %>%
+  left_join(descriptions, by = 'uniprot')
+write_tsv(top_genes, 'data/top_lm_genes.tsv')
 
 ### Save plots ###
 save_plotlist(plots, 'figures/per_gene_lms')

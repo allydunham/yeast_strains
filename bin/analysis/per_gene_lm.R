@@ -179,6 +179,34 @@ plots$ko_score_cors <- (ggplot(ko_cors, aes(x = estimate, y = -log10(padj), colo
         axis.title.y = element_markdown())) %>%
   labeled_plot(units = 'cm', height = 20, width = 20)
 
+# KO Jaccard
+calc_jaccard <- function(set1, set2){
+  length(intersect(set1, set2))/length(union(set1, set2))
+}
+
+lm_sig_genes <- filter(genes_processed, padj < 0.01) %>%
+  group_by(condition) %>%
+  {
+    n <- group_keys(.)$condition
+    group_map(., ~.$systematic) %>%
+      set_names(n)
+  }
+  
+
+jaccard <- filter(kos, qvalue < 0.01) %>% 
+  select(strain, condition, gene) %>%
+  group_by(strain, condition) %>%
+  summarise(jaccard = calc_jaccard(gene, lm_sig_genes[[condition[1]]]),
+            .groups='drop')
+
+plots$ko_jaccard <- ggplot(jaccard, aes(x = condition, y = jaccard, fill = strain)) +
+  geom_col(position = 'dodge') +
+  coord_flip() +
+  labs(x = '', y = 'Jaccard Index') +
+  scale_fill_brewer(type='qual', palette = 'Dark2', name='Strain') +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour='grey', linetype='dotted'))
+
 # Top genes per condition
 top_genes <- genes_processed %>%
   filter(padj < 0.01) %>%

@@ -184,6 +184,10 @@ calc_jaccard <- function(set1, set2){
   length(intersect(set1, set2))/length(union(set1, set2))
 }
 
+calc_prop <- function(lm, ko){
+  length(intersect(lm, ko))/length(lm)
+}
+
 lm_sig_genes <- filter(genes_processed, padj < 0.01) %>%
   group_by(condition) %>%
   {
@@ -197,12 +201,21 @@ jaccard <- filter(kos, qvalue < 0.01) %>%
   select(strain, condition, gene) %>%
   group_by(strain, condition) %>%
   summarise(jaccard = calc_jaccard(gene, lm_sig_genes[[condition[1]]]),
+            prop_lm = calc_prop(lm_sig_genes[[condition[1]]], gene),
             .groups='drop')
 
 plots$ko_jaccard <- ggplot(jaccard, aes(x = condition, y = jaccard, fill = strain)) +
   geom_col(position = 'dodge') +
   coord_flip() +
   labs(x = '', y = 'Jaccard Index') +
+  scale_fill_brewer(type='qual', palette = 'Dark2', name='Strain') +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour='grey', linetype='dotted'))
+
+plots$ko_overlap <- ggplot(jaccard, aes(x = condition, y = prop_lm, fill = strain)) +
+  geom_col(position = 'dodge') +
+  coord_flip() +
+  labs(x = '', y = 'Proportion of significant genes with significant KO phenotype') +
   scale_fill_brewer(type='qual', palette = 'Dark2', name='Strain') +
   theme(panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(colour='grey', linetype='dotted'))

@@ -212,11 +212,24 @@ plots$ko_jaccard <- ggplot(jaccard, aes(x = condition, y = jaccard, fill = strai
   theme(panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(colour='grey', linetype='dotted'))
 
-plots$ko_overlap <- ggplot(jaccard, aes(x = condition, y = prop_lm, fill = strain)) +
+plots$ko_overlap_per_strain <- ggplot(jaccard, aes(x = condition, y = prop_lm, fill = strain)) +
   geom_col(position = 'dodge') +
   coord_flip() +
   labs(x = '', y = 'Proportion of significant genes with significant KO phenotype') +
   scale_fill_brewer(type='qual', palette = 'Dark2', name='Strain') +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour='grey', linetype='dotted'))
+
+total_prop <- filter(kos, qvalue < 0.01) %>%
+  select(condition, gene) %>%
+  distinct() %>%
+  group_by(condition) %>%
+  summarise(prop_lm = calc_prop(lm_sig_genes[[condition[1]]], gene), .groups='drop')
+
+plots$ko_overlap <- ggplot(total_prop, aes(x = condition, y = prop_lm)) +
+  geom_col(position = 'dodge', fill = 'cornflowerblue') +
+  coord_flip() +
+  labs(x = '', y = 'Proportion of significant genes with significant KO phenotype') +
   theme(panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(colour='grey', linetype='dotted'))
 

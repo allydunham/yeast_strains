@@ -252,6 +252,21 @@ top_genes <- select(top_genes, condition, uniprot, systematic, adj_rsquared, pad
   left_join(descriptions, by = 'uniprot')
 write_tsv(top_genes, 'data/top_lm_genes.tsv')
 
+# Common KO genes
+common_ko_genes <- filter(kos, score < 0, qvalue < 0.01) %>%
+  distinct(strain, condition, gene) %>%
+  count(condition, gene) %>%
+  filter(n == 4) %>%
+  left_join(uniprot_map, by = c(gene='systematic'))
+
+ko_descriptions <- getBM(attributes=c('uniprotswissprot','description'), filters = 'uniprotswissprot',
+                         values = unique(common_ko_genes$uniprot), mart=ensembl) %>%
+  as_tibble() %>%
+  rename(uniprot=uniprotswissprot)
+
+common_ko_genes <- left_join(common_ko_genes, ko_descriptions, by = 'uniprot')
+write_tsv(common_ko_genes, 'data/common_ko_genes.tsv')
+
 ### Save plots ###
 save_plotlist(plots, 'figures/per_gene_lms')
 

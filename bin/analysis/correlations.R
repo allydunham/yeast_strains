@@ -93,5 +93,23 @@ plots$cor_distribution <- ggplot(cors, aes(x = estimate, colour = omic)) +
   labs(x = 'Correlation Coefficient', y = 'Density') +
   scale_colour_brewer(name = '', type = 'qual', palette = 'Dark2', direction = -1)
 
+### Gene variability
+variability <- group_by(omics, systematic) %>%
+  summarise(var_proteomic = var(proteomic, na.rm = TRUE),
+            var_transcriptomic = var(transcriptomic, na.rm = TRUE),
+            .groups = 'drop') %>%
+  left_join(per_gene_cross, by = 'systematic') %>%
+  drop_na(estimate)
+
+plots$proteomic_variance <- ggplot(variability, aes(x = var_proteomic, y = estimate)) +
+  geom_point() +
+  geom_smooth(method = 'lm', formula = y ~ x) +
+  labs(x = 'Variance of Proteomic Log2 FC', y = 'Correlation Coefficient between Proteomic and Transcriptomic FC')
+
+plots$transcriptomic_variance <- ggplot(variability, aes(x = var_transcriptomic, y = estimate)) +
+  geom_point() +
+  geom_smooth(method = 'lm', formula = y ~ x) +
+  labs(x = 'Variance of Transcriptomic Log2 FC', y = 'Correlation Coefficient between Proteomic and Transcriptomic FC')
+
 ### Save Plots ###
 save_plotlist(plots, 'figures/correlation/')

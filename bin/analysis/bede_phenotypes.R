@@ -2,6 +2,7 @@
 # Analyse Bede's S-Score Phenotype Data
 source('src/config.R')
 library(caret)
+library(dynamicTreeCut)
 
 ### Import Data ###
 phenotypes <- read_rds('data/rdata/bede_phenotypes.rds') %>%
@@ -15,6 +16,17 @@ omic_pcas <- read_rds('data/rdata/omic_pcas.rds') %>%
 vae <- bind_rows(`VAE - All` = read_tsv('data/vae/profiles.tsv'),
                  `VAE - Omics` = read_tsv('data/vae_omics/profiles.tsv'),
                  .id = 'model')
+
+genetic_distance <- read_rds('data/rdata/genetic_distance_matrix.rds')
+
+# Assign each strain to a clade
+genetic_clust <- hclust(as.dist(genetic_distance))
+genetic_clades <- cutreeDynamic(genetic_clust, distM = genetic_distance, deepSplit = 2)
+strain_clades <- tibble(clade=as.factor(genetic_clades)) %>%
+  model.matrix(~clade + 0, data=.) %>%
+  as_tibble() %>%
+  mutate(strain=genetic_clust$labels) %>%
+  select(strain, everything())
 
 # Identify conditions with reasonable number of negative examples
 good_cons <- group_by(phenotypes, condition) %>%
@@ -54,6 +66,13 @@ vae_lms <- select(phenotypes, strain, condition, score) %>%
   group_modify(~tidy_lm(lm(score ~ ., data = .), type = 'VAE')) %>%
   select(-type) %>%
   rename(type = model)
+
+clade_lms <- select(phenotypes, strain, condition, score) %>%
+  left_join(strain_clades, by = 'strain') %>%
+  filter(clade0 == 0) %>% # Remove three outlier strain
+  select(-clade0, -strain) %>%
+  group_by(condition) %>%
+  group_modify(~tidy_lm(lm(score ~ ., data = .), type = 'Clade'))
 
 calc_lms <- function(tbl, ...){
   tbl <- drop_na(tbl)
@@ -123,7 +142,8 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
   group_modify(calc_lms) %>%
   drop_na() %>%
   bind_rows(vae_lms) %>%
-  mutate(type = factor(type, levels = c('P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
+  bind_rows(clade_lms) %>%
+  mutate(type = factor(type, levels = c('Clade', 'P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
                                         'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All', 'VAE - Omics', 'VAE - All')))
 
 # phenotype_logisitics <- group_by(omic_pcas, condition) %>%
@@ -134,7 +154,7 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
 phenotype_logisitics <- read_rds('data/rdata/phenotype_logistics.rds')
 
 ### Analyse  Models ###
-lm_colours <- c(`P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
+lm_colours <- c(`Clade`='grey', `P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
                 `Transcriptomic/P(Aff)`='red', `Proteomic/P(Aff)`='green', `Proteomic/Transcriptomic`='blue',
                 `All` = 'black', 'VAE - All'='orange', 'VAE - Omics'='orange')
 plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
@@ -147,7 +167,7 @@ plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squar
         panel.grid.major.y = element_blank())
 plots$lm_factor_r_squared <- labeled_plot(plots$lm_factor_r_squared, units = 'cm', height = 30, width = 50)
 
-nfactor_map <- c(`P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
+nfactor_map <- c(`Clade`=1, `P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
                  `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3,
                  `VAE - All`=3, `VAE - Omics`=2)
 plots$lm_factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%

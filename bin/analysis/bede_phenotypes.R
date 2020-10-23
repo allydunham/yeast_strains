@@ -21,7 +21,7 @@ genetic_distance <- read_rds('data/rdata/genetic_distance_matrix.rds')
 
 # Assign each strain to a clade
 genetic_clust <- hclust(as.dist(genetic_distance))
-genetic_clades <- cutreeDynamic(genetic_clust, distM = genetic_distance, deepSplit = 2)
+genetic_clades <- cutreeDynamic(genetic_clust, distM = genetic_distance, deepSplit = 1, method = 'tree')
 strain_clades <- tibble(clade=as.factor(genetic_clades)) %>%
   model.matrix(~clade + 0, data=.) %>%
   as_tibble() %>%

@@ -8,6 +8,7 @@ source('src/config.R')
 phenotypes <- read_rds('data/rdata/bede_phenotypes.rds')
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
+genetic_distance <- read_rds('data/rdata/genetic_distance_matrix.rds')
 
 plots <- list()
 ### Calculate Dim Reduction ###
@@ -35,11 +36,14 @@ paff_pca <- select(omics, systematic, strain, paff) %>%
   tibble_to_matrix(-strain, row_names = 'strain')
 paff_pca <- prcomp(paff_pca, rank. = 100)
 
+dist_pca <- prcomp(genetic_distance, rank. = 100)
+  
 omic_pcas <- as_tibble(proteomic_pca$x, rownames = 'strain') %>% 
   rename_with(~str_c('proteomic_', .), -strain) %>%
   full_join(phenotypes, ., by = 'strain') %>%
   full_join(as_tibble(transcriptomic_pca$x, rownames = 'strain') %>% rename_with(~str_c('transcriptomic_', .), -strain), by = 'strain') %>%
   full_join(as_tibble(paff_pca$x, rownames = 'strain') %>% rename_with(~str_c('paff_', .), -strain), by = 'strain') %>%
+  full_join(as_tibble(dist_pca$x, rownames = 'strain') %>% rename_with(~str_c('dist_', .), -strain), by = 'strain') %>%
   select(strain, condition, score, qvalue, starts_with('proteomic_'), starts_with('transcriptomic_'), starts_with('paff_'))
 write_rds(omic_pcas, 'data/rdata/omic_pcas.rds')
 

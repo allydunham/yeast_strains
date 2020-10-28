@@ -11,7 +11,8 @@ omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 omic_pcas <- read_rds('data/rdata/omic_pcas.rds') %>%
   select(strain, condition, score, qvalue, num_range('proteomic_PC', range = 1:50),
-         num_range('transcriptomic_PC', range = 1:50), num_range('paff_PC', range = 1:50))
+         num_range('transcriptomic_PC', range = 1:50), num_range('paff_PC', range = 1:50),
+         num_range('dist_PC', range = 1:50))
 
 vae <- bind_rows(`VAE - All` = read_tsv('data/vae/profiles.tsv'),
                  `VAE - Omics` = read_tsv('data/vae_omics/profiles.tsv'),
@@ -81,6 +82,8 @@ calc_lms <- function(tbl, ...){
     return(tibble(type=NA, adj_r_squared=NA, f_Statistic=NA, p_value=NA))
   }
   
+  dist_lm <- lm(score ~ ., data = select(tbl, score, starts_with('dist')))
+  
   prot_lm <- lm(score ~ ., data = select(tbl, score, starts_with('proteomic')))
   trans_lm <- lm(score ~ ., data = select(tbl, score, starts_with('transcriptomic')))
   paff_lm <- lm(score ~ ., data = select(tbl, score, starts_with('paff')))
@@ -93,6 +96,7 @@ calc_lms <- function(tbl, ...){
   
   return(
     bind_rows(
+      tidy_lm(prot_lm, type = 'Genetic Distance'),
       tidy_lm(prot_lm, type = 'Proteomic'),
       tidy_lm(trans_lm, type = 'Transcriptomic'),
       tidy_lm(paff_lm, type = 'P(Aff)'),
@@ -143,7 +147,7 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
   drop_na() %>%
   bind_rows(vae_lms) %>%
   bind_rows(clade_lms) %>%
-  mutate(type = factor(type, levels = c('Clade', 'P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
+  mutate(type = factor(type, levels = c('Clade', 'Genetic Distance', 'P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
                                         'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All', 'VAE - Omics', 'VAE - All')))
 
 # phenotype_logisitics <- group_by(omic_pcas, condition) %>%
@@ -154,7 +158,7 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
 phenotype_logisitics <- read_rds('data/rdata/phenotype_logistics.rds')
 
 ### Analyse  Models ###
-lm_colours <- c(`Clade`='grey', `P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
+lm_colours <- c(`Clade`='grey', `Genetic Distance`='grey', `P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan',
                 `Transcriptomic/P(Aff)`='red', `Proteomic/P(Aff)`='green', `Proteomic/Transcriptomic`='blue',
                 `All` = 'black', 'VAE - All'='orange', 'VAE - Omics'='orange')
 plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
@@ -167,7 +171,7 @@ plots$lm_factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squar
         panel.grid.major.y = element_blank())
 plots$lm_factor_r_squared <- labeled_plot(plots$lm_factor_r_squared, units = 'cm', height = 30, width = 50)
 
-nfactor_map <- c(`Clade`=1, `P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
+nfactor_map <- c(`Clade`=1, `Genetic Distance`=1, `P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
                  `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3,
                  `VAE - All`=3, `VAE - Omics`=2)
 plots$lm_factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%

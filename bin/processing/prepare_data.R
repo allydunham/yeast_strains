@@ -27,15 +27,24 @@ early_stops <- read_tsv('data/early_stops.tsv') %>%
 write_rds(early_stops, 'data/rdata/early_stops.rds')
 
 # Omics
-proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
-  select(-X1) %>%
-  rename(gene=symbol, systematic=systematic_name) %>%
-  pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
-  group_by(gene, systematic) %>%
+proteomic <- read_tsv("data/raw/210316_ProteomicsData_genes_imputed_KNN.tsv") %>%
+  pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
+  group_by(systematic) %>%
   mutate(fc = abundance / median(abundance),
          fc = log2(fc + min(fc[fc > 0]))) %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
+
+# # Old Data
+# proteomic <- read_csv('data/raw/1k_quant_wide_systematic_name.csv', ) %>%
+#   select(-X1) %>%
+#   rename(gene=symbol, systematic=systematic_name) %>%
+#   pivot_longer(!one_of(c('gene', 'systematic')), names_to = 'strain', values_to = 'abundance') %>% 
+#   group_by(gene, systematic) %>%
+#   mutate(fc = abundance / median(abundance),
+#          fc = log2(fc + min(fc[fc > 0]))) %>%
+#   ungroup() %>%
+#   filter(systematic %in% paff$systematic)
 
 transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
   rename(systematic = systematic_name) %>%
@@ -46,7 +55,7 @@ transcriptomic <- read_csv('data/raw/tpm_FinalSet_969strains.csv') %>%
   ungroup() %>%
   filter(systematic %in% paff$systematic)
 
-comb <- full_join(select(proteomic, -gene) %>% rename(proteomic_raw=abundance, proteomic=fc),
+comb <- full_join(rename(proteomic, proteomic_raw=abundance, proteomic=fc),
                   rename(transcriptomic, transcriptomic_raw=abundance, transcriptomic=fc),
                   by = c('systematic', 'strain')) %>%
   left_join(paff, by = c('systematic', 'strain')) %>%

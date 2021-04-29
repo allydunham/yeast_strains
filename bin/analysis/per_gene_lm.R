@@ -268,5 +268,5 @@ common_ko_genes <- left_join(common_ko_genes, ko_descriptions, by = 'uniprot')
 write_tsv(common_ko_genes, 'data/common_ko_genes.tsv')
 
 ### Save plots ###
-save_plotlist(plots, 'figures/per_gene_lms')
+save_plotlist(plots, 'figures/per_gene_lms', overwrite = "all")
 

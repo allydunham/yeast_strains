@@ -111,7 +111,7 @@ plots$paff_pca_loadings <- labeled_plot(plots$paff_pca_loadings, units='cm', hei
 #                  description = str_c("GO analysis of", type, pc, sep = ' '),
 #                  annot = annFUN.gene2GO,
 #                  gene2GO=go_map)
-#   
+# 
 #   fisher <- runTest(go_data, algorithm = "classic", statistic = "fisher")
 #   ks <- runTest(go_data, algorithm = "classic", statistic = "ks")
 #   ks_elim <- runTest(go_data, algorithm = "elim", statistic = "ks")
@@ -136,4 +136,4 @@ plots$paff_pca_loadings <- labeled_plot(plots$paff_pca_loadings, units='cm', hei
 top_gene_go <- read_rds('data/rdata/top_gene_go.rds')
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/pcas/')
+save_plotlist(plots, 'figures/pcas/', overwrite = "all")

@@ -66,4 +66,4 @@ plots$overall <- ggplot(stops, aes(x = consequence, y = proteomic)) +
   stat_compare_means(comparisons = list(c('Frameshift', 'Missense'), c('Missense', 'Nonsense'), c('Frameshift', 'Nonsense')))
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/early_stops')
+save_plotlist(plots, 'figures/early_stops', overwrite = "all")

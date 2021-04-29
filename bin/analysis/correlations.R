@@ -112,4 +112,4 @@ plots$transcriptomic_variance <- ggplot(variability, aes(x = var_transcriptomic,
   labs(x = 'Variance of Transcriptomic Log2 FC', y = 'Correlation Coefficient between Proteomic and Transcriptomic FC')
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/correlation/')
+save_plotlist(plots, 'figures/correlation/', overwrite = "all")

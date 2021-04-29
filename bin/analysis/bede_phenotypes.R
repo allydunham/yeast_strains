@@ -256,4 +256,4 @@ plots$lm_factor_r_squared_summary_shuffled <- mutate(shuffled_lms, nfactors = as
 plots$lm_factor_r_squared_summary_shuffled <- labeled_plot(plots$lm_factor_r_squared_summary_shuffled, units = 'cm', height = 15, width = 40)
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/bede_phenotypes/')
+save_plotlist(plots, 'figures/bede_phenotypes/', overwrite = "all")

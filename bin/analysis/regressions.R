@@ -95,7 +95,7 @@ plots$high_diff_gene_cors <- (filter(omics, systematic %in% paff_diff_genes) %>%
                                 geom_point(shape = 20, show.legend = FALSE) +
                                 scale_colour_brewer(type = 'qual') +
                                 theme(strip.placement = 'outside')) %>%
-  labeled_plot(units = 'cm', width = 20, height = length(paff_diff_genes) * 3)
+  labeled_plot(units = 'cm', width = 20, height = length(paff_diff_genes) * 3, limitsize = FALSE)
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/regressions/')
+save_plotlist(plots, 'figures/regressions/', overwrite = "all")

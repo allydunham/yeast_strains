@@ -32,4 +32,4 @@ plots$extreme_distributions <- (filter(paff, systematic %in% (filter(paff_distri
   labeled_plot(width = 20, height = 20, units = 'cm')
 
 ### Save Plots ###
-save_plotlist(plots, 'figures/paff/')
+save_plotlist(plots, 'figures/paff/', overwrite = "all")

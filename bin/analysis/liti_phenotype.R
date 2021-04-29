@@ -67,7 +67,7 @@ lm_colours <- c(`P(Aff)`='yellow', `Transcriptomic`='magenta', `Proteomic`='cyan
                 `Transcriptomic/P(Aff)`='red', `Proteomic/P(Aff)`='green', `Proteomic/Transcriptomic`='blue',
                 `All` = 'black')
 plots$factor_r_squared <- ggplot(phenotype_lms, aes(x = type, y = adj_r_squared, fill = type)) +
-  facet_wrap(~condition, nrow = 6, ncol = 6) +
+  facet_wrap(~condition, nrow = 7, ncol = 7) +
   geom_col(show.legend = FALSE) +
   coord_flip() + 
   scale_fill_manual(values = lm_colours) +
@@ -88,4 +88,4 @@ plots$factor_r_squared_summary <- mutate(phenotype_lms, nfactors = as.character(
 plots$factor_r_squared_summary <- labeled_plot(plots$factor_r_squared_summary, units = 'cm', height = 15, width = 35)
   
 ### Save Plots ###
-save_plotlist(plots, 'figures/liti_phenotypes/')
+save_plotlist(plots, 'figures/liti_phenotypes/', overwrite = "all")

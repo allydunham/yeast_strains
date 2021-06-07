@@ -143,5 +143,5 @@ figure <- multi_panel_figure(width = 180, height = 120, columns = 2, rows = 4,
   fill_panel(p4, row = 3:4, column = 1) %>%
   fill_panel(p5, row = 3:4, column = 2)
 
-ggsave('figures/thesis_figure.pdf', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm')
+ggsave('figures/thesis_figure.pdf', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm', device = cairo_pdf)
 ggsave('figures/thesis_figure.tiff', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm')

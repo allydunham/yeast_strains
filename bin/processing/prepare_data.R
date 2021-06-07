@@ -27,7 +27,8 @@ early_stops <- read_tsv('data/early_stops.tsv') %>%
 write_rds(early_stops, 'data/rdata/early_stops.rds')
 
 # Omics
-proteomic <- read_tsv("data/raw/210316_ProteomicsData_genes_imputed_KNN.tsv") %>%
+proteomic <- read_tsv("data/raw/210601_ProteomicsData_genes_imputed_KNN.tsv") %>%
+  rename(systematic = Protein.Group) %>%
   pivot_longer(-systematic, names_to = 'strain', values_to = 'abundance') %>% 
   group_by(systematic) %>%
   mutate(fc = abundance / median(abundance),

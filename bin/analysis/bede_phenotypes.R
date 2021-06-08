@@ -149,6 +149,7 @@ phenotype_lms <- select(omic_pcas, -qvalue) %>%
   bind_rows(clade_lms) %>%
   mutate(type = factor(type, levels = c('Clade', 'Genetic Distance', 'P(Aff)', 'Transcriptomic', 'Proteomic', 'Transcriptomic/P(Aff)',
                                         'Proteomic/P(Aff)', 'Proteomic/Transcriptomic', 'All', 'VAE - Omics', 'VAE - All')))
+write_rds(phenotype_lms, 'data/rdata/phenotype_lms.rds')
 
 # phenotype_logisitics <- group_by(omic_pcas, condition) %>%
 #   group_modify(calc_logistic_models) %>%

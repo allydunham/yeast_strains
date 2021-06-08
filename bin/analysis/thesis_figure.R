@@ -16,6 +16,39 @@ blank_plot <- function(text = ''){
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 
+genes <- read_tsv("meta/sacc_gene_loci")
+
+#### Panel - Data Description ####
+data_summary <- select(omics, systematic, strain, Proteome=proteomic, Transcriptome=transcriptomic, `P(Aff)`=paff) %>%
+  pivot_longer(c(-systematic, -strain), names_to = "measure", values_to = "value") %>%
+  drop_na() %>%
+  group_by(measure) %>%
+  summarise(Genes = n_distinct(systematic), Strains = n_distinct(strain)) %>%
+  pivot_longer(-measure, names_to = "item", values_to = "count") %>%
+  mutate(measure = factor(measure, levels = c("Proteomic", "Transcriptomic", "P(Aff)")))
+
+p_data <- ggplot(data_summary, aes(x = measure, y = count)) +
+  facet_wrap(~item, scales = "free_x", strip.position = "bottom") +
+  geom_col(fill = "cornflowerblue", width = 0.75) +
+  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
+  theme(panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
+        panel.grid.major.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title = element_blank(),
+        strip.placement = "outside")
+
+#### Panel - Distributions ####
+omics_long <- select(omics, systematic, strain, `Proteome FC`=proteomic, `Transcriptome FC`=transcriptomic, `P(Aff)`=paff) %>%
+  pivot_longer(c(-systematic, -strain), names_to = "measure", values_to = "value")
+
+p_data_dist <- ggplot(omics_long, aes(x = value, y = ..scaled.., colour = measure)) +
+  facet_wrap(~measure, scales = "free", strip.position = "bottom") +
+  stat_density(geom = "line", show.legend = FALSE) +
+  labs(x = "", y = "Scaled Density") +
+  theme(strip.placement = "outside")
+
 #### Panel - Correlation ####
 group_cor_test <- function(tbl, var1, var2){
   var1 <- enquo(var1)
@@ -43,30 +76,6 @@ p_correlation <- ggplot(per_gene_cor, aes(x = estimate, colour = str_to_sentence
   theme(legend.position = "top",
         legend.margin = margin(0,0,0,0),
         legend.box.margin = margin(-5,0,-10,0))
-
-classify_p <- function(trans, prot){
-  out <- rep('Neither', length(trans))
-  out[trans < 0.05] <- 'Transcriptomic'
-  out[prot < 0.05] <- 'Proteomic'
-  out[trans < 0.05 & prot < 0.05] <- 'Both'
-  return(factor(out, levels = c('Neither', 'Transcriptomic', 'Proteomic', 'Both')))
-}
-
-cor_cats <- select(per_gene_cor, name, systematic, p.adj) %>%
-  pivot_wider(names_from = name, values_from = p.adj) %>%
-  mutate(cat = classify_p(transcriptomic, proteomic)) %>%
-  count(cat)
-
-p_correlation_cat <- ggplot(cor_cats, aes(x = reorder(cat, -n), y = n)) +
-  geom_col(width = 0.5, fill = "cornflowerblue", show.legend = FALSE) +
-  coord_flip() +
-  stat_summary(geom = "text", fun.data = function(x) {data.frame(y = x, label = x)}, hjust = -0.2, size = 2.5) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
-  labs(x = "", y = "Number of genes where p<sub>adj</sub> < 0.05") +
-  theme(axis.title.x = element_markdown(),
-        panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
-        panel.grid.major.y = element_blank(),
-        axis.ticks.y = element_blank())
 
 #### Panel - Regression ####
 tidy_lm <- function(x, type){
@@ -120,28 +129,106 @@ p_regression <- ggplot(proteome_lm, aes(x = Transcriptome, y = `Transcriptome + 
         legend.box.margin = margin(-5,0,-10,0))
 
 #### Panel - Linear Models ####
+phenotype_lms <- read_rds('data/rdata/phenotype_lms.rds')
 
-p_linear_models <- blank_plot("Linear Models")
+nfactor_map <- c(`Clade`=1, `Genetic Distance`=1, `P(Aff)`=1, `Transcriptomic`=1, `Proteomic`=1, `Transcriptomic/P(Aff)`=2,
+                 `Proteomic/P(Aff)`=2, `Proteomic/Transcriptomic`=2, `All`=3,
+                 `VAE - All`=3, `VAE - Omics`=2)
+p_linear_models <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.character(type)])) %>%
+  ggplot(aes(x = type, y = adj_r_squared, fill = nfactors)) +
+  geom_boxplot(outlier.shape = 20, outlier.size = 0.5) +
+  coord_flip() +
+  scale_x_discrete(limits = rev) +
+  ylim(c(0, NA)) +
+  scale_fill_brewer(type = 'qual', palette = 'Set1') +
+  guides(fill = guide_legend(title = 'Number of Factors')) +
+  labs(x = '', y = 'Adj. R Squared') +
+  theme(legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(-5,0,-10,0),
+        panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
+        panel.grid.major.y = element_blank(),
+        axis.ticks.y = element_blank())
 
-#### Panel - Per Gene Models ####
+#### Panel - Per Gene Model Summary ####
+gene_lms <- read_rds('data/rdata/per_gene_lms.rds') %>%
+  drop_na() %>%
+  mutate(padj = p.adjust(pvalue, 'fdr')) %>%
+  ungroup()
 
-p_per_gene <- blank_plot("Per Gene")
+p_value_cutoff <- 0.01
+factor_summary <- mutate(gene_lms,
+                         trans = p.adjust(p_value_transcriptomic, 'fdr') < p_value_cutoff,
+                         prot = p.adjust(p_value_proteomic, 'fdr') < p_value_cutoff,
+                         paff = p.adjust(p_value_paff, 'fdr') < p_value_cutoff) %>%
+  summarise(Transcriptomic = sum(trans & !prot & !paff),
+            Proteomic = sum(prot & !trans & !paff),
+            `P(Aff)` = sum(paff & !prot & !trans),
+            `Transcriptomic & Proteomic` = sum(trans & prot & !paff),
+            `Transcriptomic & P(Aff)` = sum(trans & paff & !prot),
+            `Proteomic & P(Aff)` = sum(prot & paff & !trans),
+            All = sum(trans & prot & paff), .groups = 'drop') %>%
+  pivot_longer(everything(), names_to = 'factors', values_to = 'count') %>%
+  mutate(n_factors = c(None = 0, Transcriptomic = 1, Proteomic = 1, `P(Aff)` = 1, `Transcriptomic & Proteomic` = 2,
+                       `Transcriptomic & P(Aff)` = 2, `Proteomic & P(Aff)` = 2, All = 3)[factors],
+         factors = factor(factors, levels = c('All', 'Proteomic & P(Aff)', 'Transcriptomic & P(Aff)', 'Transcriptomic & Proteomic',
+                                              'P(Aff)', 'Proteomic', 'Transcriptomic', 'None')))
+
+p_per_gene_summary <- ggplot(factor_summary, aes(x = factors, y = count, fill = as.character(n_factors))) +
+  geom_col() +
+  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2) +
+  coord_flip() +
+  scale_x_discrete(limits = rev) +
+  scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
+  scale_fill_brewer(name = "Factors", type = "qual", palette = "Dark2") +
+  labs(y = "Associations", x = "") +
+  theme(legend.position = "right",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,-5,0,-10),
+        legend.key.size = unit(2, units = "mm"),
+        panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
+        panel.grid.major.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+#### Panel - Per Gene Model Examples ####
+examples_genes <- filter(gene_lms, condition %in% c("NaCl 0.6M (48H)", "42ºC (48H)", "Caffeine 20mM (48H)")) %>%
+  left_join(select(genes, systematic = id, name), by = "systematic")
+
+p_per_gene_examples <- ggplot(examples_genes, aes(x = rsquared, y = padj)) +
+  facet_wrap(~condition, nrow = 1) +
+  geom_point(aes(colour = padj < 0.05), shape = 20, size = 0.75) +
+  geom_text_repel(data = filter(examples_genes, rsquared > 0.25), mapping = aes(label = name),
+                  ylim = c(0, Inf), force = 10, size = 2) +
+  labs(x = expression(R^2), y = expression(p[adj])) +
+  guides(colour = guide_legend(override.aes = list(size = 2))) +
+  scale_colour_manual(name = 'p<sub>adj</sub>',
+                      values = c(`TRUE`='red', `FALSE`='black'),
+                      labels = c(`TRUE`='< 0.05', `FALSE`='> 0.05')) + 
+  theme(legend.title = element_markdown(),
+        legend.position = "bottom",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(-10,0,-5,0),
+        axis.ticks.y = element_blank())
 
 #### Figure Assembly ####
 size <- theme(text = element_text(size = 8))
-p1 <- p_correlation + labs(tag = 'A') + size
-p2 <- p_correlation_cat + labs(tag = "B") + size
-p3 <- p_regression + labs(tag = 'C') + size
-p4 <- p_linear_models + labs(tag = 'D') + size
-p5 <- p_per_gene + labs(tag = 'E') + size
-
-figure <- multi_panel_figure(width = 180, height = 120, columns = 2, rows = 4,
+p1 <- p_data + labs(tag = 'A') + size
+p2 <- p_data_dist + labs(tag = 'B') + size
+p3 <- p_correlation + labs(tag = 'C') + size
+p4 <- p_regression + labs(tag = 'D') + size
+p5 <- p_linear_models + labs(tag = 'E') + size
+p6 <- p_per_gene_summary + labs(tag = 'F') + size
+p7 <- p_per_gene_examples + labs(tag = "G") + size
+  
+figure <- multi_panel_figure(width = 180, height = 180, columns = 2, rows = 4,
                              panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
   fill_panel(p1, row = 1, column = 1) %>%
   fill_panel(p2, row = 2, column = 1) %>%
-  fill_panel(p3, row = 1:2, column = 2) %>%
-  fill_panel(p4, row = 3:4, column = 1) %>%
-  fill_panel(p5, row = 3:4, column = 2)
+  fill_panel(p3, row = 1, column = 2) %>%
+  fill_panel(p4, row = 2, column = 2) %>%
+  fill_panel(p5, row = 3:4, column = 1) %>%
+  fill_panel(p6, row = 3, column = 2) %>%
+  fill_panel(p7, row = 4, column = 2)
 
 ggsave('figures/thesis_figure.pdf', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm', device = cairo_pdf)
 ggsave('figures/thesis_figure.tiff', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm')

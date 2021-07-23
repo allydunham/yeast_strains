@@ -3,16 +3,6 @@
 source("src/config.R")
 library(multipanelfigure)
 
-blank_plot <- function(text = ''){
-  ggplot(tibble(x=c(0, 1)), aes(x=x, y=x)) +
-    geom_blank() +
-    annotate(geom = 'text', x = 0.5, y = 0.5, label = text) +
-    theme(panel.grid.major.y = element_blank(),
-          axis.ticks = element_blank(),
-          axis.text = element_blank(),
-          axis.title = element_blank())
-}
-
 omics <- read_rds('data/rdata/omics.rds') %>%
   filter(!low_paff_range)
 
@@ -25,11 +15,11 @@ data_summary <- select(omics, systematic, strain, Proteome=proteomic, Transcript
   group_by(measure) %>%
   summarise(Genes = n_distinct(systematic), Strains = n_distinct(strain)) %>%
   pivot_longer(-measure, names_to = "item", values_to = "count") %>%
-  mutate(measure = factor(measure, levels = c("Proteomic", "Transcriptomic", "P(Aff)")))
+  mutate(measure = factor(measure, levels = c("Proteome", "Transcriptome", "P(Aff)")))
 
 p_data <- ggplot(data_summary, aes(x = measure, y = count)) +
   facet_wrap(~item, scales = "free_x", strip.position = "bottom") +
-  geom_col(fill = "cornflowerblue", width = 0.75) +
+  geom_col(fill = "cornflowerblue", width = 0.6) +
   stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
@@ -46,7 +36,8 @@ omics_long <- select(omics, systematic, strain, `Proteome FC`=proteomic, `Transc
 p_data_dist <- ggplot(omics_long, aes(x = value, y = ..scaled.., colour = measure)) +
   facet_wrap(~measure, scales = "free", strip.position = "bottom") +
   stat_density(geom = "line", show.legend = FALSE) +
-  labs(x = "", y = "Scaled Density") +
+  labs(y = "Scaled Density") +
+  scale_x_continuous(name = "", labels = function(x) str_remove(x, "\\.?0*^")) +
   theme(strip.placement = "outside")
 
 #### Panel - Correlation ####
@@ -199,7 +190,8 @@ p_per_gene_examples <- ggplot(examples_genes, aes(x = rsquared, y = padj)) +
   geom_point(aes(colour = padj < 0.05), shape = 20, size = 0.75) +
   geom_text_repel(data = filter(examples_genes, rsquared > 0.25), mapping = aes(label = name),
                   ylim = c(0, Inf), force = 10, size = 2) +
-  labs(x = expression(R^2), y = expression(p[adj])) +
+  labs(y = expression(p[adj])) +
+  scale_x_continuous(name = expression(R^2), labels = function(x) str_remove(x, "\\.?0*^")) +
   guides(colour = guide_legend(override.aes = list(size = 2))) +
   scale_colour_manual(name = 'p<sub>adj</sub>',
                       values = c(`TRUE`='red', `FALSE`='black'),

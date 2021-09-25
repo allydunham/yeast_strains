@@ -19,12 +19,14 @@ data_summary <- select(omics, systematic, strain, Proteome=proteomic, Transcript
 
 p_data <- ggplot(data_summary, aes(x = measure, y = count)) +
   facet_wrap(~item, scales = "free_x", strip.position = "bottom") +
-  geom_col(fill = "cornflowerblue", width = 0.6) +
-  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2) +
-  coord_flip() +
+  geom_col(fill = "cornflowerblue", width = 0.55) +
+  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2.5) +
+  coord_flip(clip = "off") +
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
   theme(panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
         panel.grid.major.y = element_blank(),
+        panel.spacing = unit(3, "mm"),
+        panel.background = element_blank(),
         axis.ticks.y = element_blank(),
         axis.title = element_blank(),
         strip.placement = "outside")
@@ -130,7 +132,7 @@ p_linear_models <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.
   geom_boxplot(outlier.shape = 20, outlier.size = 0.5) +
   coord_flip() +
   scale_x_discrete(limits = rev) +
-  ylim(c(0, NA)) +
+  ylim(c(0, 0.6)) +
   scale_fill_brewer(type = 'qual', palette = 'Set1') +
   guides(fill = guide_legend(title = 'Number of Factors')) +
   labs(x = '', y = 'Adj. R Squared') +
@@ -167,13 +169,13 @@ factor_summary <- mutate(gene_lms,
 
 p_per_gene_summary <- ggplot(factor_summary, aes(x = factors, y = count, fill = as.character(n_factors))) +
   geom_col() +
-  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2) +
+  stat_summary(geom = "text", fun.data = function(i) {data.frame(y = i, label = i)}, hjust = -0.2, size = 2.5) +
   coord_flip() +
   scale_x_discrete(limits = rev) +
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
   scale_fill_brewer(name = "Factors", type = "qual", palette = "Dark2") +
   labs(y = "Associations", x = "") +
-  theme(legend.position = "right",
+  theme(legend.position = "top",
         legend.margin = margin(0,0,0,0),
         legend.box.margin = margin(0,-5,0,-10),
         legend.key.size = unit(2, units = "mm"),
@@ -183,13 +185,14 @@ p_per_gene_summary <- ggplot(factor_summary, aes(x = factors, y = count, fill = 
 
 #### Panel - Per Gene Model Examples ####
 examples_genes <- filter(gene_lms, condition %in% c("NaCl 0.6M (48H)", "42ºC (48H)", "Caffeine 20mM (48H)")) %>%
-  left_join(select(genes, systematic = id, name), by = "systematic")
+  left_join(select(genes, systematic = id, name), by = "systematic") %>%
+  mutate(condition = str_remove(condition, " \\(48H\\)"))
 
 p_per_gene_examples <- ggplot(examples_genes, aes(x = rsquared, y = padj)) +
   facet_wrap(~condition, nrow = 1) +
   geom_point(aes(colour = padj < 0.05), shape = 20, size = 0.75) +
   geom_text_repel(data = filter(examples_genes, rsquared > 0.25), mapping = aes(label = name),
-                  ylim = c(0, Inf), force = 10, size = 2) +
+                  ylim = c(0, Inf), force = 40, size = 2.5) +
   labs(y = expression(p[adj])) +
   scale_x_continuous(name = expression(R^2), labels = function(x) str_remove(x, "\\.?0*^")) +
   guides(colour = guide_legend(override.aes = list(size = 2))) +
@@ -202,25 +205,37 @@ p_per_gene_examples <- ggplot(examples_genes, aes(x = rsquared, y = padj)) +
         legend.box.margin = margin(-10,0,-5,0),
         axis.ticks.y = element_blank())
 
-#### Figure Assembly ####
-size <- theme(text = element_text(size = 8))
-p1 <- p_data + labs(tag = 'A') + size
-p2 <- p_data_dist + labs(tag = 'B') + size
-p3 <- p_correlation + labs(tag = 'C') + size
-p4 <- p_regression + labs(tag = 'D') + size
-p5 <- p_linear_models + labs(tag = 'E') + size
-p6 <- p_per_gene_summary + labs(tag = 'F') + size
-p7 <- p_per_gene_examples + labs(tag = "G") + size
+#### Figure - Data Properties ####
+size <- theme(text = element_text(size = 11))
+p1_prop <- p_data + labs(tag = 'A') + size
+p2_prop <- p_data_dist + labs(tag = 'B') + size
+p3_prop <- p_correlation + labs(tag = 'C') + size
+p4_prop <- p_regression + labs(tag = 'D') + size
   
-figure <- multi_panel_figure(width = 180, height = 180, columns = 2, rows = 4,
-                             panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
-  fill_panel(p1, row = 1, column = 1) %>%
-  fill_panel(p2, row = 2, column = 1) %>%
-  fill_panel(p3, row = 1, column = 2) %>%
-  fill_panel(p4, row = 2, column = 2) %>%
-  fill_panel(p5, row = 3:4, column = 1) %>%
-  fill_panel(p6, row = 3, column = 2) %>%
-  fill_panel(p7, row = 4, column = 2)
+figure_prop <- multi_panel_figure(width = 180, height = 120, columns = 2, rows = 2,
+                                  panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
+  fill_panel(p1_prop, row = 1, column = 1) %>%
+  fill_panel(p2_prop, row = 1, column = 2) %>%
+  fill_panel(p3_prop, row = 2, column = 1) %>%
+  fill_panel(p4_prop, row = 2, column = 2)
 
-ggsave('figures/thesis_figure.pdf', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm', device = cairo_pdf)
-ggsave('figures/thesis_figure.tiff', figure, width = figure_width(figure), height = figure_height(figure), units = 'mm')
+#### Figure - Models ####
+size <- theme(text = element_text(size = 11))
+p1_mod <- p_linear_models + labs(tag = 'A') + size
+p2_mod <- p_per_gene_summary + labs(tag = 'B') + size
+p3_mod <- p_per_gene_examples + labs(tag = "C") + size
+
+figure_mod <- multi_panel_figure(width = 180, height = 140, columns = 2, rows = 2,
+                                 panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
+  fill_panel(p1_mod, row = 1:2, column = 1) %>%
+  fill_panel(p2_mod, row = 1, column = 2) %>%
+  fill_panel(p3_mod, row = 2, column = 2)
+
+### Save ###
+ggsave('figures/thesis_figure_properties.pdf', figure_prop, width = figure_width(figure_prop), height = figure_height(figure_prop), units = 'mm',
+       device = cairo_pdf)
+ggsave('figures/thesis_figure_properties.png', figure_prop, width = figure_width(figure_prop), height = figure_height(figure_prop), units = 'mm')
+
+ggsave('figures/thesis_figure_model.pdf', figure_mod, width = figure_width(figure_mod), height = figure_height(figure_mod), units = 'mm',
+       device = cairo_pdf)
+ggsave('figures/thesis_figure_model.png', figure_mod, width = figure_width(figure_mod), height = figure_height(figure_mod), units = 'mm')

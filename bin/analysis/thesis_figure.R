@@ -133,8 +133,7 @@ p_linear_models <- mutate(phenotype_lms, nfactors = as.character(nfactor_map[as.
   coord_flip() +
   scale_x_discrete(limits = rev) +
   ylim(c(0, 0.6)) +
-  scale_fill_brewer(type = 'qual', palette = 'Set1') +
-  guides(fill = guide_legend(title = 'Number of Factors')) +
+  scale_fill_brewer(name = "Factors", type = 'qual', palette = 'Set1') +
   labs(x = '', y = 'Adj. R Squared') +
   theme(legend.position = "top",
         legend.margin = margin(0,0,0,0),
@@ -173,12 +172,13 @@ p_per_gene_summary <- ggplot(factor_summary, aes(x = factors, y = count, fill = 
   coord_flip() +
   scale_x_discrete(limits = rev) +
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.2))) +
-  scale_fill_brewer(name = "Factors", type = "qual", palette = "Dark2") +
+  scale_fill_brewer(name = "Factors", type = "qual", palette = "Set1") +
   labs(y = "Associations", x = "") +
   theme(legend.position = "top",
+        legend.title = element_text(vjust = 1),
         legend.margin = margin(0,0,0,0),
         legend.box.margin = margin(0,-5,0,-10),
-        legend.key.size = unit(2, units = "mm"),
+        legend.key.size = unit(4, units = "mm"),
         panel.grid.major.x = element_line(colour = "grey", linetype = "dotted"),
         panel.grid.major.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -221,11 +221,11 @@ figure_prop <- multi_panel_figure(width = 180, height = 120, columns = 2, rows =
 
 #### Figure - Models ####
 size <- theme(text = element_text(size = 11))
-p1_mod <- p_linear_models + labs(tag = 'A') + size
+p1_mod <- p_linear_models + guides(fill = FALSE) + labs(tag = 'A') + size
 p2_mod <- p_per_gene_summary + labs(tag = 'B') + size
 p3_mod <- p_per_gene_examples + labs(tag = "C") + size
 
-figure_mod <- multi_panel_figure(width = 180, height = 140, columns = 2, rows = 2,
+figure_mod <- multi_panel_figure(width = 180, height = 140, rows = 2, columns = 2,
                                  panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
   fill_panel(p1_mod, row = 1:2, column = 1) %>%
   fill_panel(p2_mod, row = 1, column = 2) %>%

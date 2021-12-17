@@ -32,13 +32,14 @@ p_data <- ggplot(data_summary, aes(x = measure, y = count)) +
         strip.placement = "outside")
 
 #### Panel - Distributions ####
-omics_long <- select(omics, systematic, strain, `Proteome FC`=proteomic, `Transcriptome FC`=transcriptomic, `P(Aff)`=paff) %>%
+omics_long <- select(omics, systematic, strain, `"Proteomic log"[2]~"FC"`=proteomic,
+                     `"Transcriptomic log"[2]~"FC"`=transcriptomic, `P(Aff)`=paff) %>%
   pivot_longer(c(-systematic, -strain), names_to = "measure", values_to = "value")
 
 p_data_dist <- ggplot(omics_long, aes(x = value, y = ..scaled.., colour = measure)) +
-  facet_wrap(~measure, scales = "free", strip.position = "bottom") +
+  facet_wrap(~measure, scales = "free", strip.position = "bottom", labeller = labeller(measure=label_parsed)) +
   stat_density(geom = "line", show.legend = FALSE) +
-  labs(y = "Scaled Density") +
+  labs(y = "Scaled\nDensity") +
   scale_x_continuous(name = "", labels = function(x) str_remove(x, "\\.?0*^")) +
   theme(strip.placement = "outside")
 
@@ -115,11 +116,12 @@ proteome_lm <- group_by(omics, systematic) %>%
 p_regression <- ggplot(proteome_lm, aes(x = Transcriptome, y = `Transcriptome + P(aff)`, colour = big_str)) + 
   geom_point(shape = 20, size = 0.5) +
   scale_colour_manual(name = "R difference", values = c(`> 0.05 (n = 223)`='firebrick2', `≤ 0.05 (n = 838)`='cornflowerblue')) +
-  guides(colour = guide_legend(override.aes = list(size = 2))) +
+  guides(colour = guide_legend(override.aes = list(size = 1.8))) +
   labs(x = "Transcriptome", y = "Transcriptome + P(aff)") +
   theme(legend.position = "top",
         legend.margin = margin(0,0,0,0),
-        legend.box.margin = margin(-5,0,-10,0))
+        legend.box.margin = margin(-5,0,-10,0),
+        legend.key.size = unit(1.8, "mm"))
 
 #### Panel - Linear Models ####
 phenotype_lms <- read_rds('data/rdata/phenotype_lms.rds')
@@ -212,16 +214,16 @@ p2_prop <- p_data_dist + labs(tag = 'B') + size
 p3_prop <- p_correlation + labs(tag = 'C') + size
 p4_prop <- p_regression + labs(tag = 'D') + size
   
-figure_prop <- multi_panel_figure(width = 180, height = 120, columns = 2, rows = 2,
+figure_prop <- multi_panel_figure(width = c(90,90), height = c(40, 40, 60),
                                   panel_label_type = 'none', row_spacing = 0, column_spacing = 0) %>%
-  fill_panel(p1_prop, row = 1, column = 1) %>%
-  fill_panel(p2_prop, row = 1, column = 2) %>%
-  fill_panel(p3_prop, row = 2, column = 1) %>%
-  fill_panel(p4_prop, row = 2, column = 2)
+  fill_panel(p1_prop, row = 1, column = 1:2) %>%
+  fill_panel(p2_prop, row = 2, column = 1:2) %>%
+  fill_panel(p3_prop, row = 3, column = 1) %>%
+  fill_panel(p4_prop, row = 3, column = 2)
 
 #### Figure - Models ####
 size <- theme(text = element_text(size = 11))
-p1_mod <- p_linear_models + guides(fill = FALSE) + labs(tag = 'A') + size
+p1_mod <- p_linear_models + guides(fill = "none") + labs(tag = 'A') + size
 p2_mod <- p_per_gene_summary + labs(tag = 'B') + size
 p3_mod <- p_per_gene_examples + labs(tag = "C") + size
 

@@ -117,7 +117,7 @@ p_regression <- ggplot(proteome_lm, aes(x = Transcriptome, y = `Transcriptome + 
   geom_point(shape = 20, size = 0.5) +
   scale_colour_manual(name = "R difference", values = c(`> 0.05 (n = 223)`='firebrick2', `≤ 0.05 (n = 838)`='cornflowerblue')) +
   guides(colour = guide_legend(override.aes = list(size = 1.8))) +
-  labs(x = "Transcriptome", y = "Transcriptome + P(aff)") +
+  labs(x = "Transcriptome R", y = "Transcriptome + P(aff) R") +
   theme(legend.position = "top",
         legend.margin = margin(0,0,0,0),
         legend.box.margin = margin(-5,0,-10,0),
